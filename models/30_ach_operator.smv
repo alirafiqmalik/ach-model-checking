@@ -1,0 +1,330 @@
+-- 30_ach_operator.smv
+-- ACH Operator FSM. Trusted bank: Nacha-compliant only. Nondet is
+-- U3 batch-processing variants, not adversarial deviation.
+--
+-- Flat c_info_req_* / c_dollar_req_* (see 00_types_channels.smv).
+-- 40_rdfi reads fwd_tx_id, fwd_receiver_id, fwd_tx_code,
+-- fwd_recv_acct_type, fwd_amount, fwd_is_reversal. Domain values
+-- from the referenced slots. RDFI uses them after SETTLEMENT_REQ
+-- or REVERSAL_NOTICE on c_info.
+
+MODULE ach_operator(c_info, c_dollar, env, bo_ref)
+
+VAR
+  -- receiving_batch - BATCH_FORWARD from ODFI
+  -- checking_data_v1 - U3 variant 1 (Appendix 2 Part 2.4): any
+  --   violation rejects the whole batch
+  -- checking_data_v2 - U3 variant 2 (Appendix 2 Part 2.5): R19/R36
+  --   do not reject the batch; flag entries
+  -- data_rejected_batch - variant 1 outcome
+  -- data_rejected_entry - variant 2 per-entry flag
+  -- sorting_routing - by destination RDFI
+  -- routing_to_rdfi - SETTLEMENT_REQ to RDFI
+  -- return_processing - RETURN_NOTICE RDFI to ODFI
+  -- forwarded_ack - BATCH_ACK to ODFI
+  fsm_state : {
+    idle,
+    receiving_batch,
+    checking_data_v1,
+    checking_data_v2,
+    data_accepted,
+    data_rejected_batch,
+    data_rejected_entry,
+    sorting_routing,
+    routing_to_rdfi,
+    return_processing,
+    forwarded_ack
+  };
+
+  -- R19 Amount Field Error, R36 Return of Improper Credit Entry,
+  -- none_rc if no pending rejection
+  return_code_for_rejected : {R19, R36, none_rc};
+
+  c_info_req_valid               : boolean;
+  c_info_req_sender              : {o_0, o_1, bo, a, br, r_0, r_1, none_addr};
+  c_info_req_receiver            : {o_0, o_1, bo, a, br, r_0, r_1, none_addr};
+  c_info_req_msg_type            : {LINK_REQ, LINK_ACK, VERIFY_REQ, VERIFY_ACK,
+                                    GRANT_AUTH, REVOKE_AUTH,
+                                    PAYMENT_INIT, BATCH_FORWARD, BATCH_ACK,
+                                    SETTLEMENT_REQ, SETTLEMENT_ACK,
+                                    RETURN_NOTICE, REVERSAL_NOTICE, none_msg};
+  c_info_req_payload_tx_id       : 0..3;
+  c_info_req_payload_return_code : {R01, R02, R03, R04, R07, R08, R10,
+                                    R16, R19, R29, R36, none_rc};
+  c_info_req_payload_auth_method : {manual_link, web_login, micro_deposit, none_auth};
+
+  c_dollar_req_valid         : boolean;
+  c_dollar_req_sender        : {o_0, o_1, bo, a, br, r_0, r_1, none_addr};
+  c_dollar_req_receiver      : {o_0, o_1, bo, a, br, r_0, r_1, none_addr};
+  c_dollar_req_msg_type      : {FUND_DEBIT, FUND_CREDIT, FUND_REVERSE, none_msg};
+  c_dollar_req_payload_tx_id : 0..3;
+  c_dollar_req_amount        : {MICRO, SMALL, LARGE, none_amt};
+
+IVAR
+  -- which Nacha batch-processing branch this step
+  u3_variant : {variant_reject_batch, variant_accept_and_flag};
+
+  -- Invalid tx_code / non-numeric amount style faults. Enum domains
+  -- have no out-of-range values, so these are environment Booleans.
+  -- Four flat IVARs, not "array 0..3 of boolean": nuXmv 2.1.0
+  -- parser ambiguity.
+  env_tx_malformed_0 : boolean;
+  env_tx_malformed_1 : boolean;
+  env_tx_malformed_2 : boolean;
+  env_tx_malformed_3 : boolean;
+
+DEFINE
+  -- Four global tx slots, via ODFI originator parameters
+  tx_state_0 := bo_ref.o_0_ref.tx_0.payment_state;
+  tx_state_1 := bo_ref.o_0_ref.tx_1.payment_state;
+  tx_state_2 := bo_ref.o_1_ref.tx_0.payment_state;
+  tx_state_3 := bo_ref.o_1_ref.tx_1.payment_state;
+
+  tx0_in_batch := tx_state_0 = batched;
+  tx1_in_batch := tx_state_1 = batched;
+  tx2_in_batch := tx_state_2 = batched;
+  tx3_in_batch := tx_state_3 = batched;
+
+  any_tx_in_batch := tx0_in_batch | tx1_in_batch
+                   | tx2_in_batch | tx3_in_batch;
+
+  any_tx_in_pipeline :=
+        tx_state_0 = batched | tx_state_0 = pending_settlement
+      | tx_state_1 = batched | tx_state_1 = pending_settlement
+      | tx_state_2 = batched | tx_state_2 = pending_settlement
+      | tx_state_3 = batched | tx_state_3 = pending_settlement;
+
+  -- After the first SETTLEMENT_REQ, wait until that slot leaves
+  -- pending_settlement, then forward the remaining batched companion.
+  -- Do not drop the second SETTLEMENT_REQ.
+  any_tx_pending :=
+        tx_state_0 = pending_settlement
+      | tx_state_1 = pending_settlement
+      | tx_state_2 = pending_settlement
+      | tx_state_3 = pending_settlement;
+
+  -- batch-level data-format violation
+  batch_has_violation :=
+        (tx0_in_batch & env_tx_malformed_0)
+      | (tx1_in_batch & env_tx_malformed_1)
+      | (tx2_in_batch & env_tx_malformed_2)
+      | (tx3_in_batch & env_tx_malformed_3);
+
+  -- idle -> receiving_batch: BATCH_FORWARD from ODFI
+  rcv_batch_forward :=
+        c_info.occupied
+      & c_info.sender   = bo
+      & c_info.receiver = a
+      & c_info.msg_type = BATCH_FORWARD;
+
+  -- idle -> return_processing: RETURN_NOTICE from RDFI
+  rcv_return_notice :=
+        c_info.occupied
+      & c_info.sender   = br
+      & c_info.receiver = a
+      & c_info.msg_type = RETURN_NOTICE;
+
+  -- Forward-target DEFINEs for 40_rdfi.smv. RDFI reads these on
+  -- SETTLEMENT_REQ / reversal. Lowest-indexed batched slot.
+  -- Same projection on reversal; RDFI uses fwd_is_reversal.
+  fwd_tx_id := case
+    tx0_in_batch : 0;
+    tx1_in_batch : 1;
+    tx2_in_batch : 2;
+    tx3_in_batch : 3;
+    TRUE         : 0;
+  esac;
+
+  fwd_receiver_id := case
+    fwd_tx_id = 0 : bo_ref.o_0_ref.tx_0.receiver_id;
+    fwd_tx_id = 1 : bo_ref.o_0_ref.tx_1.receiver_id;
+    fwd_tx_id = 2 : bo_ref.o_1_ref.tx_0.receiver_id;
+    TRUE          : bo_ref.o_1_ref.tx_1.receiver_id;
+  esac;
+
+  fwd_tx_code := case
+    fwd_tx_id = 0 : bo_ref.o_0_ref.tx_0.tx_code;
+    fwd_tx_id = 1 : bo_ref.o_0_ref.tx_1.tx_code;
+    fwd_tx_id = 2 : bo_ref.o_1_ref.tx_0.tx_code;
+    TRUE          : bo_ref.o_1_ref.tx_1.tx_code;
+  esac;
+
+  fwd_recv_acct_type := case
+    fwd_tx_id = 0 : bo_ref.o_0_ref.tx_0.recv_account_type;
+    fwd_tx_id = 1 : bo_ref.o_0_ref.tx_1.recv_account_type;
+    fwd_tx_id = 2 : bo_ref.o_1_ref.tx_0.recv_account_type;
+    TRUE          : bo_ref.o_1_ref.tx_1.recv_account_type;
+  esac;
+
+  fwd_amount := case
+    fwd_tx_id = 0 : bo_ref.o_0_ref.tx_0.amount;
+    fwd_tx_id = 1 : bo_ref.o_0_ref.tx_1.amount;
+    fwd_tx_id = 2 : bo_ref.o_1_ref.tx_0.amount;
+    TRUE          : bo_ref.o_1_ref.tx_1.amount;
+  esac;
+
+  fwd_is_reversal := case
+    fwd_tx_id = 0 : bo_ref.o_0_ref.tx_0.is_reversal;
+    fwd_tx_id = 1 : bo_ref.o_0_ref.tx_1.is_reversal;
+    fwd_tx_id = 2 : bo_ref.o_1_ref.tx_0.is_reversal;
+    TRUE          : bo_ref.o_1_ref.tx_1.is_reversal;
+  esac;
+
+-- Active state: at least one tx in the Operator pipeline
+-- (batched or pending_settlement).
+INVAR ( fsm_state = checking_data_v1
+      | fsm_state = checking_data_v2
+      | fsm_state = data_accepted
+      | fsm_state = data_rejected_batch
+      | fsm_state = data_rejected_entry
+      | fsm_state = sorting_routing
+      | fsm_state = routing_to_rdfi
+      | fsm_state = forwarded_ack
+      | fsm_state = return_processing )
+      -> any_tx_in_pipeline;
+
+ASSIGN
+  init(fsm_state) := idle;
+  init(return_code_for_rejected) := none_rc;
+
+  init(c_info_req_valid)               := FALSE;
+  init(c_info_req_sender)              := a;
+  init(c_info_req_receiver)            := none_addr;
+  init(c_info_req_msg_type)            := none_msg;
+  init(c_info_req_payload_tx_id)       := 0;
+  init(c_info_req_payload_return_code) := none_rc;
+  init(c_info_req_payload_auth_method) := none_auth;
+
+  init(c_dollar_req_valid)         := FALSE;
+  init(c_dollar_req_sender)        := a;
+  init(c_dollar_req_receiver)      := none_addr;
+  init(c_dollar_req_msg_type)      := none_msg;
+  init(c_dollar_req_payload_tx_id) := 0;
+  init(c_dollar_req_amount)        := none_amt;
+
+  next(fsm_state) := case
+    -- idle -> receiving_batch on BATCH_FORWARD from ODFI (bo)
+    fsm_state = idle & rcv_batch_forward & any_tx_in_batch
+        : receiving_batch;
+
+    -- Return relay path from RDFI
+    fsm_state = idle & rcv_return_notice & any_tx_in_pipeline
+        : return_processing;
+
+    -- After the first slot is terminal, return to idle and then
+    -- route the remaining batched slot. Returning to idle frees
+    -- c_info so the RDFI can send SETTLEMENT_ACK or RETURN_NOTICE
+    -- (BATCH_ACK would otherwise occupy the bus).
+    fsm_state = idle & any_tx_in_batch & !any_tx_pending
+        & !rcv_batch_forward & !rcv_return_notice
+        : routing_to_rdfi;
+
+    -- receiving_batch -> checking_data_{v1|v2} per U3 variant (IVAR)
+    fsm_state = receiving_batch & u3_variant = variant_reject_batch
+        : checking_data_v1;
+    fsm_state = receiving_batch & u3_variant = variant_accept_and_flag
+        : checking_data_v2;
+
+    -- Variant 1 (Part 2.4): any violation rejects whole batch
+    fsm_state = checking_data_v1 &  batch_has_violation
+        : data_rejected_batch;
+    fsm_state = checking_data_v1 & !batch_has_violation
+        : data_accepted;
+
+    -- Variant 2 (Part 2.5): R19/R36 do NOT reject batch; flag entries
+    fsm_state = checking_data_v2 &  batch_has_violation
+        : data_rejected_entry;
+    fsm_state = checking_data_v2 & !batch_has_violation
+        : data_accepted;
+
+    -- Accepted-path clearing and routing
+    fsm_state = data_accepted   : sorting_routing;
+    fsm_state = sorting_routing : routing_to_rdfi;
+    fsm_state = routing_to_rdfi : forwarded_ack;
+    -- After BATCH_ACK, go idle so the channel is free. Remaining
+    -- batched slots are routed from the idle transition above.
+    fsm_state = forwarded_ack   : idle;
+
+    -- Variant-1 whole-batch rejection: send RETURN_NOTICE, return idle
+    fsm_state = data_rejected_batch : idle;
+
+    -- Variant-2 per-entry rejection: flag and proceed with remainder
+    fsm_state = data_rejected_entry : data_accepted;
+
+    -- Return-relay path completes back to idle
+    fsm_state = return_processing : idle;
+
+    TRUE : fsm_state;
+  esac;
+
+  -- Nondeterministic R19/R36 at the moment of rejection
+  next(return_code_for_rejected) := case
+    fsm_state = checking_data_v1 &  batch_has_violation : {R19, R36};
+    fsm_state = checking_data_v2 &  batch_has_violation : {R19, R36};
+    fsm_state = idle                                    : none_rc;
+    TRUE                                                : return_code_for_rejected;
+  esac;
+
+  -- Operator emits:
+  -- * SETTLEMENT_REQ during routing_to_rdfi (-> br)
+  -- * BATCH_ACK during forwarded_ack (-> bo)
+  -- * RETURN_NOTICE during data_rejected_* (-> bo)
+  -- and during return_processing (relay -> bo)
+  next(c_info_req_valid) := case
+    next(fsm_state) = routing_to_rdfi     : TRUE;
+    next(fsm_state) = forwarded_ack       : TRUE;
+    next(fsm_state) = data_rejected_batch : TRUE;
+    next(fsm_state) = data_rejected_entry : TRUE;
+    next(fsm_state) = return_processing   : TRUE;
+    TRUE                                   : FALSE;
+  esac;
+
+  next(c_info_req_sender) := a;
+
+  next(c_info_req_receiver) := case
+    next(fsm_state) = routing_to_rdfi     : br;
+    next(fsm_state) = forwarded_ack       : bo;
+    next(fsm_state) = data_rejected_batch : bo;
+    next(fsm_state) = data_rejected_entry : bo;
+    next(fsm_state) = return_processing   : bo;
+    TRUE                                   : none_addr;
+  esac;
+
+  next(c_info_req_msg_type) := case
+    next(fsm_state) = routing_to_rdfi     : SETTLEMENT_REQ;
+    next(fsm_state) = forwarded_ack       : BATCH_ACK;
+    next(fsm_state) = data_rejected_batch : RETURN_NOTICE;
+    next(fsm_state) = data_rejected_entry : RETURN_NOTICE;
+    next(fsm_state) = return_processing   : RETURN_NOTICE;
+    TRUE                                   : none_msg;
+  esac;
+
+  -- payload_tx_id: first tx in the batch (deterministic)
+  next(c_info_req_payload_tx_id) := case
+    tx0_in_batch : 0;
+    tx1_in_batch : 1;
+    tx2_in_batch : 2;
+    tx3_in_batch : 3;
+    TRUE         : 0;
+  esac;
+
+  next(c_info_req_payload_return_code) := case
+    (next(fsm_state) = data_rejected_batch
+     | next(fsm_state) = data_rejected_entry)
+       & return_code_for_rejected = R19 : R19;
+    (next(fsm_state) = data_rejected_batch
+     | next(fsm_state) = data_rejected_entry)
+       & return_code_for_rejected = R36 : R36;
+    next(fsm_state) = return_processing : c_info.payload_return_code;
+    TRUE                                 : none_rc;
+  esac;
+
+  next(c_info_req_payload_auth_method) := none_auth;
+
+  -- Settlement messaging is on c_info. c_dollar stays quiescent.
+  next(c_dollar_req_valid)         := FALSE;
+  next(c_dollar_req_sender)        := a;
+  next(c_dollar_req_receiver)      := none_addr;
+  next(c_dollar_req_msg_type)      := none_msg;
+  next(c_dollar_req_payload_tx_id) := 0;
+  next(c_dollar_req_amount)        := none_amt;

@@ -1,0 +1,218 @@
+-- 99_main.smv
+-- Composition, SPECs, JUSTICE.
+--
+-- env_i : timing / logical clock
+-- recv_0, recv_1 : adversarial Receivers
+-- orig_0, orig_1 : adversarial Originators
+-- odfi_i : ODFI
+-- ach_i : ACH Operator
+-- rdfi_i : RDFI
+-- c_info / c_dollar : buses
+-- g : global_invariants observer
+--
+-- Instance names (orig_0, odfi_i) avoid colliding with bus-address enums.
+--
+-- Φ1 Continuous Authorization
+-- Φ2 Zero-Sum Invariant (per-class)
+-- Φ3 Settlement Finality
+-- EF witnesses for reachable milestone states
+--
+-- JUSTICE: batch windows and logical-clock advance.
+
+MODULE main
+
+VAR
+  env_i : env;
+
+  recv_0 : receiver(0, c_info, env_i);
+  recv_1 : receiver(1, c_info, env_i);
+
+  -- auth_grants_from_r0 / r1 are Receiver instances. Originator
+  -- reads grant_to_o* / revoke_to_o* / grant_method_to_o*
+  -- DEFINEs (50_receiver.smv).
+  orig_0 : originator(0, c_info, c_dollar, env_i, recv_0, recv_1);
+  orig_1 : originator(1, c_info, c_dollar, env_i, recv_0, recv_1);
+
+  odfi_i  : odfi(c_info, c_dollar, env_i, orig_0, orig_1);
+  ach_i   : ach_operator(c_info, c_dollar, env_i, odfi_i);
+  rdfi_i  : rdfi(c_info, c_dollar, env_i, ach_i, recv_0, recv_1);
+
+  -- Channels read each participant's flat send-request fields.
+  c_info   : c_info_channel(orig_0, orig_1, odfi_i, ach_i, rdfi_i,
+                            recv_0, recv_1);
+  c_dollar : c_dollar_channel(orig_0, orig_1, odfi_i, ach_i, rdfi_i,
+                              recv_0, recv_1);
+
+  g : global_invariants(env_i, orig_0, orig_1, odfi_i, ach_i, rdfi_i,
+                        recv_0, recv_1);
+
+DEFINE
+  -- Φ1 helpers.
+  -- entry_settled: ODFI provisional credit on a debit, still true
+  -- after R16 (returned debits included).
+  -- Authorized is false when that debit is returned R16 and the RDFI
+  -- account is FROZEN or DEBIT_BLOCKED.
+  phi1_rdfi_eligible_tx0 :=
+      (orig_0.tx_0.receiver_id = 0
+        & !(rdfi_i.r0_account_status in {FROZEN, DEBIT_BLOCKED}))
+    | (orig_0.tx_0.receiver_id = 1
+        & !(rdfi_i.r1_account_status in {FROZEN, DEBIT_BLOCKED}));
+  phi1_rdfi_eligible_tx1 :=
+      (orig_0.tx_1.receiver_id = 0
+        & !(rdfi_i.r0_account_status in {FROZEN, DEBIT_BLOCKED}))
+    | (orig_0.tx_1.receiver_id = 1
+        & !(rdfi_i.r1_account_status in {FROZEN, DEBIT_BLOCKED}));
+  phi1_rdfi_eligible_tx2 :=
+      (orig_1.tx_0.receiver_id = 0
+        & !(rdfi_i.r0_account_status in {FROZEN, DEBIT_BLOCKED}))
+    | (orig_1.tx_0.receiver_id = 1
+        & !(rdfi_i.r1_account_status in {FROZEN, DEBIT_BLOCKED}));
+  phi1_rdfi_eligible_tx3 :=
+      (orig_1.tx_1.receiver_id = 0
+        & !(rdfi_i.r0_account_status in {FROZEN, DEBIT_BLOCKED}))
+    | (orig_1.tx_1.receiver_id = 1
+        & !(rdfi_i.r1_account_status in {FROZEN, DEBIT_BLOCKED}));
+
+  phi1_authorized_tx0 :=
+      !(   orig_0.tx_0.payment_state = returned
+         & orig_0.tx_0.return_code = R16
+         & !phi1_rdfi_eligible_tx0 );
+  phi1_authorized_tx1 :=
+      !(   orig_0.tx_1.payment_state = returned
+         & orig_0.tx_1.return_code = R16
+         & !phi1_rdfi_eligible_tx1 );
+  phi1_authorized_tx2 :=
+      !(   orig_1.tx_0.payment_state = returned
+         & orig_1.tx_0.return_code = R16
+         & !phi1_rdfi_eligible_tx2 );
+  phi1_authorized_tx3 :=
+      !(   orig_1.tx_1.payment_state = returned
+         & orig_1.tx_1.return_code = R16
+         & !phi1_rdfi_eligible_tx3 );
+
+  phi1_ok_tx0 := orig_0.tx_0.entry_settled -> phi1_authorized_tx0;
+  phi1_ok_tx1 := orig_0.tx_1.entry_settled -> phi1_authorized_tx1;
+  phi1_ok_tx2 := orig_1.tx_0.entry_settled -> phi1_authorized_tx2;
+  phi1_ok_tx3 := orig_1.tx_1.entry_settled -> phi1_authorized_tx3;
+
+  -- Φ3 helpers.
+  -- resource_available: issuer restores the card limit. Can become
+  -- true before the return window closes.
+  resource_released_tx0 := orig_0.tx_0.resource_available;
+  resource_released_tx1 := orig_0.tx_1.resource_available;
+  resource_released_tx2 := orig_1.tx_0.resource_available;
+  resource_released_tx3 := orig_1.tx_1.resource_available;
+
+-- window_count is monotonic and bounded at 3. JUSTICE window_count = 3
+-- means the three scheduled batch cycles complete infinitely often.
+JUSTICE env_i.window_count = 3;
+
+-- Phase is monotonic and bounded at ph_return_closed (replaces the
+-- old env.step = 20 idiom). Liveness (AF / F) then has an infinite
+-- trace on which the phase sequence runs.
+JUSTICE env_i.return_window_expired;
+
+-- Φ1, Φ2, Φ3 are the three INVARSPEC formulas below.
+-- check_invar_ic3 -n uses show_property unified indices (CTL SPECs
+-- first, then Invar). Scripts look up Invar indices; they are not 0, 1, 2.
+
+-- Φ1 Continuous Authorization.
+-- Exists-compromised disjunct is FALSE in the base model.
+INVARSPEC ( phi1_ok_tx0 & phi1_ok_tx1 & phi1_ok_tx2 & phi1_ok_tx3 );
+
+-- Φ2 Zero-Sum Invariant, per-class (paper K = {micro, regular}).
+-- Counts are settled entries (n_credits_* / n_debits_*).
+INVARSPEC ( g.cycle_complete ->
+            ( g.n_credits_micro = g.n_debits_micro
+            & g.n_credits_regular = g.n_debits_regular ) );
+
+-- Φ3 Settlement Finality. Counterexample: resource released while
+-- the return window is still open. INVARSPEC (not AG-AF): JUSTICE
+-- made the old CTL form vacuously true.
+INVARSPEC
+  ( (resource_released_tx0 -> env_i.return_window_expired)
+  & (resource_released_tx1 -> env_i.return_window_expired)
+  & (resource_released_tx2 -> env_i.return_window_expired)
+  & (resource_released_tx3 -> env_i.return_window_expired) );
+
+
+
+-- EF witnesses.
+
+-- Originator (10_originator.smv)
+-- Linking succeeds.
+SPEC EF (orig_0.fsm_state = linked_ok);
+
+-- Linking fails (md_reinit_count exhausted, no confirm).
+SPEC EF (orig_0.fsm_state = link_failed);
+
+-- Micro-deposit confirm and fail.
+SPEC EF (orig_0.md_state = md_confirmed);
+SPEC EF (orig_0.md_state = md_failed);
+
+-- ODFI rejects a submitted entry (data-format).
+SPEC EF (orig_0.tx_0.payment_state = rejected);
+
+-- RDFI return from pending_settlement.
+SPEC EF (orig_0.tx_0.payment_state = returned);
+
+-- Reversal of a settled entry inside the window.
+SPEC EF (orig_0.tx_0.payment_state = reversed);
+
+-- Reversal sub-flow (fsm_state = reversing).
+SPEC EF (orig_0.fsm_state = reversing);
+
+-- Receiver (50_receiver.smv)
+-- Grant and revoke, independently.
+SPEC EF (recv_0.fsm_state = auth_granted);
+SPEC EF (recv_0.fsm_state = auth_revoked_state);
+
+-- Receiver-side micro-deposit confirm and fail (separate from
+-- the Originator md_state).
+SPEC EF (recv_0.fsm_state = confirmed_md);
+SPEC EF (recv_0.fsm_state = rejected_md);
+
+-- Return notice on a Receiver.
+SPEC EF (recv_0.fsm_state = notified_return);
+
+-- Adversarial account-state change.
+SPEC EF (recv_0.fsm_state = account_state_changed);
+
+-- ODFI (20_odfi.smv)
+SPEC EF (odfi_i.fsm_state = tps_verified);
+SPEC EF (odfi_i.fsm_state = tps_rejected);
+SPEC EF (odfi_i.fsm_state = validation_rejected);
+SPEC EF (odfi_i.fsm_state = operator_acked);
+SPEC EF (odfi_i.fsm_state = link_acked);
+
+-- Both U3 branches (Appendix 2 Parts 2.4 and 2.5). Each needs
+-- its own witness.
+SPEC EF (odfi_i.u3_batch_reject);
+SPEC EF (odfi_i.u3_flag_entries);
+
+-- ACH Operator (30_ach_operator.smv)
+SPEC EF (ach_i.fsm_state = data_rejected_batch);   -- variant 1
+SPEC EF (ach_i.fsm_state = data_rejected_entry);   -- variant 2
+SPEC EF (ach_i.fsm_state = forwarded_ack);         -- clean path
+
+-- RDFI (40_rdfi.smv)
+SPEC EF (rdfi_i.fsm_state = settled_state);
+SPEC EF (rdfi_i.fsm_state = returning);
+SPEC EF (rdfi_i.fsm_state = reversed_state);
+
+-- R16 and R29.
+SPEC EF (rdfi_i.selected_return_code = R16);
+SPEC EF (rdfi_i.selected_return_code = R29);
+
+-- Global / environment (00_types_channels.smv, 60_global_constraints.smv)
+-- Three scheduled batch cycles complete in some run.
+SPEC EF (env_i.window_count = 3);
+
+-- Terminal phase.
+SPEC EF (env_i.phase = ph_return_closed);
+
+-- Per-class settlements. All-zero would be a vacuous Φ2.
+SPEC EF (g.n_credits_micro > 0);
+SPEC EF (g.n_credits_small > 0);
+SPEC EF (g.n_credits_large > 0);
+SPEC EF (g.n_debits_micro  > 0);

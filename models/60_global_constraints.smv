@@ -1,0 +1,187 @@
+-- 60_global_constraints.smv
+-- Counts and INVARs used by Φ2.
+-- n_submitted <= 3 (tx_count and window_count bounds are in
+-- 10_originator and 00_types_channels).
+-- cycle_complete: non-empty cycle, every slot terminal, this
+-- cycle's return window still open (paper §5.1).
+-- Same-class credit/debit pairing INVARs.
+--
+-- submitted -> batched on env.batch_expired lives in each
+-- transaction_slot next(payment_state) (10_originator.smv):
+--   payment_state = submitted & env.batch_expired : batched
+-- All slots read env.batch_expired in the same step, so the
+-- qualifying set moves together. This module does not write
+-- other modules' state.
+
+MODULE global_invariants(env, o_0, o_1, bo, a, br, r_0, r_1)
+
+DEFINE
+  -- Flattened global index 0..3: o_0.tx_0, o_0.tx_1, o_1.tx_0, o_1.tx_1.
+  tx0_state := o_0.tx_0.payment_state;
+  tx1_state := o_0.tx_1.payment_state;
+  tx2_state := o_1.tx_0.payment_state;
+  tx3_state := o_1.tx_1.payment_state;
+
+  tx0_code  := o_0.tx_0.tx_code;
+  tx1_code  := o_0.tx_1.tx_code;
+  tx2_code  := o_1.tx_0.tx_code;
+  tx3_code  := o_1.tx_1.tx_code;
+
+  tx0_amt   := o_0.tx_0.amount;
+  tx1_amt   := o_0.tx_1.amount;
+  tx2_amt   := o_1.tx_0.amount;
+  tx3_amt   := o_1.tx_1.amount;
+
+  -- n_credits_* / n_debits_* count settled postings (paper §5.1, §6.2).
+  -- A returned debit is still in the cycle but is not a settled debit,
+  -- so per-class equality can fail (paper A2). SMALL and LARGE are
+  -- the paper's regular class K.
+  tx0_settled := tx0_state = settled;
+  tx1_settled := tx1_state = settled;
+  tx2_settled := tx2_state = settled;
+  tx3_settled := tx3_state = settled;
+
+  n_credits_micro :=
+      (case tx0_settled & tx0_code = credit & tx0_amt = MICRO : 1; TRUE : 0; esac)
+    + (case tx1_settled & tx1_code = credit & tx1_amt = MICRO : 1; TRUE : 0; esac)
+    + (case tx2_settled & tx2_code = credit & tx2_amt = MICRO : 1; TRUE : 0; esac)
+    + (case tx3_settled & tx3_code = credit & tx3_amt = MICRO : 1; TRUE : 0; esac);
+
+  n_credits_small :=
+      (case tx0_settled & tx0_code = credit & tx0_amt = SMALL : 1; TRUE : 0; esac)
+    + (case tx1_settled & tx1_code = credit & tx1_amt = SMALL : 1; TRUE : 0; esac)
+    + (case tx2_settled & tx2_code = credit & tx2_amt = SMALL : 1; TRUE : 0; esac)
+    + (case tx3_settled & tx3_code = credit & tx3_amt = SMALL : 1; TRUE : 0; esac);
+
+  n_credits_large :=
+      (case tx0_settled & tx0_code = credit & tx0_amt = LARGE : 1; TRUE : 0; esac)
+    + (case tx1_settled & tx1_code = credit & tx1_amt = LARGE : 1; TRUE : 0; esac)
+    + (case tx2_settled & tx2_code = credit & tx2_amt = LARGE : 1; TRUE : 0; esac)
+    + (case tx3_settled & tx3_code = credit & tx3_amt = LARGE : 1; TRUE : 0; esac);
+
+  n_debits_micro :=
+      (case tx0_settled & tx0_code = debit & tx0_amt = MICRO : 1; TRUE : 0; esac)
+    + (case tx1_settled & tx1_code = debit & tx1_amt = MICRO : 1; TRUE : 0; esac)
+    + (case tx2_settled & tx2_code = debit & tx2_amt = MICRO : 1; TRUE : 0; esac)
+    + (case tx3_settled & tx3_code = debit & tx3_amt = MICRO : 1; TRUE : 0; esac);
+
+  n_debits_small :=
+      (case tx0_settled & tx0_code = debit & tx0_amt = SMALL : 1; TRUE : 0; esac)
+    + (case tx1_settled & tx1_code = debit & tx1_amt = SMALL : 1; TRUE : 0; esac)
+    + (case tx2_settled & tx2_code = debit & tx2_amt = SMALL : 1; TRUE : 0; esac)
+    + (case tx3_settled & tx3_code = debit & tx3_amt = SMALL : 1; TRUE : 0; esac);
+
+  n_debits_large :=
+      (case tx0_settled & tx0_code = debit & tx0_amt = LARGE : 1; TRUE : 0; esac)
+    + (case tx1_settled & tx1_code = debit & tx1_amt = LARGE : 1; TRUE : 0; esac)
+    + (case tx2_settled & tx2_code = debit & tx2_amt = LARGE : 1; TRUE : 0; esac)
+    + (case tx3_settled & tx3_code = debit & tx3_amt = LARGE : 1; TRUE : 0; esac);
+
+  -- Presented: the slot reached the RDFI (pending_settlement or later).
+  -- Used by the origination-balance INVAR below.
+  tx0_presented := tx0_state in {pending_settlement, settled, returned, reversed};
+  tx1_presented := tx1_state in {pending_settlement, settled, returned, reversed};
+  tx2_presented := tx2_state in {pending_settlement, settled, returned, reversed};
+  tx3_presented := tx3_state in {pending_settlement, settled, returned, reversed};
+
+  micro_credit_presented :=
+        (tx0_presented & tx0_code = credit & tx0_amt = MICRO)
+      | (tx1_presented & tx1_code = credit & tx1_amt = MICRO)
+      | (tx2_presented & tx2_code = credit & tx2_amt = MICRO)
+      | (tx3_presented & tx3_code = credit & tx3_amt = MICRO);
+  micro_debit_presented :=
+        (tx0_presented & tx0_code = debit & tx0_amt = MICRO)
+      | (tx1_presented & tx1_code = debit & tx1_amt = MICRO)
+      | (tx2_presented & tx2_code = debit & tx2_amt = MICRO)
+      | (tx3_presented & tx3_code = debit & tx3_amt = MICRO);
+  regular_credit_presented :=
+        (tx0_presented & tx0_code = credit & tx0_amt in {SMALL, LARGE})
+      | (tx1_presented & tx1_code = credit & tx1_amt in {SMALL, LARGE})
+      | (tx2_presented & tx2_code = credit & tx2_amt in {SMALL, LARGE})
+      | (tx3_presented & tx3_code = credit & tx3_amt in {SMALL, LARGE});
+  regular_debit_presented :=
+        (tx0_presented & tx0_code = debit & tx0_amt in {SMALL, LARGE})
+      | (tx1_presented & tx1_code = debit & tx1_amt in {SMALL, LARGE})
+      | (tx2_presented & tx2_code = debit & tx2_amt in {SMALL, LARGE})
+      | (tx3_presented & tx3_code = debit & tx3_amt in {SMALL, LARGE});
+
+  n_credits_regular := n_credits_small + n_credits_large;
+  n_debits_regular  := n_debits_small  + n_debits_large;
+
+  tx0_incycle := tx0_state in {submitted, batched, pending_settlement,
+                               settled, returned, reversed};
+  tx1_incycle := tx1_state in {submitted, batched, pending_settlement,
+                               settled, returned, reversed};
+  tx2_incycle := tx2_state in {submitted, batched, pending_settlement,
+                               settled, returned, reversed};
+  tx3_incycle := tx3_state in {submitted, batched, pending_settlement,
+                               settled, returned, reversed};
+
+  micro_credit_incycle :=
+        (tx0_incycle & tx0_code = credit & tx0_amt = MICRO)
+      | (tx1_incycle & tx1_code = credit & tx1_amt = MICRO)
+      | (tx2_incycle & tx2_code = credit & tx2_amt = MICRO)
+      | (tx3_incycle & tx3_code = credit & tx3_amt = MICRO);
+  micro_debit_incycle :=
+        (tx0_incycle & tx0_code = debit & tx0_amt = MICRO)
+      | (tx1_incycle & tx1_code = debit & tx1_amt = MICRO)
+      | (tx2_incycle & tx2_code = debit & tx2_amt = MICRO)
+      | (tx3_incycle & tx3_code = debit & tx3_amt = MICRO);
+  regular_credit_incycle :=
+        (tx0_incycle & tx0_code = credit & tx0_amt in {SMALL, LARGE})
+      | (tx1_incycle & tx1_code = credit & tx1_amt in {SMALL, LARGE})
+      | (tx2_incycle & tx2_code = credit & tx2_amt in {SMALL, LARGE})
+      | (tx3_incycle & tx3_code = credit & tx3_amt in {SMALL, LARGE});
+  regular_debit_incycle :=
+        (tx0_incycle & tx0_code = debit & tx0_amt in {SMALL, LARGE})
+      | (tx1_incycle & tx1_code = debit & tx1_amt in {SMALL, LARGE})
+      | (tx2_incycle & tx2_code = debit & tx2_amt in {SMALL, LARGE})
+      | (tx3_incycle & tx3_code = debit & tx3_amt in {SMALL, LARGE});
+
+  -- cycle_complete (paper §5.1): some slot is in-cycle, none are in
+  -- the pipeline, and the return window has not expired.
+  tx0_in_pipeline := tx0_state in {submitted, batched, pending_settlement};
+  tx1_in_pipeline := tx1_state in {submitted, batched, pending_settlement};
+  tx2_in_pipeline := tx2_state in {submitted, batched, pending_settlement};
+  tx3_in_pipeline := tx3_state in {submitted, batched, pending_settlement};
+
+  any_incycle := tx0_incycle | tx1_incycle | tx2_incycle | tx3_incycle;
+
+  cycle_complete :=
+        any_incycle
+      & !tx0_in_pipeline & !tx1_in_pipeline
+      & !tx2_in_pipeline & !tx3_in_pipeline
+      & !env.return_window_expired;
+
+  -- Slots currently submitted. At each batch_expired rising edge,
+  -- at most 3 of them are batched.
+  n_submitted :=
+      (case tx0_state = submitted : 1; TRUE : 0; esac)
+    + (case tx1_state = submitted : 1; TRUE : 0; esac)
+    + (case tx2_state = submitted : 1; TRUE : 0; esac)
+    + (case tx3_state = submitted : 1; TRUE : 0; esac);
+
+-- Batch-entry bound: at most 3 entries batched together.
+-- INVAR on submitted slots (the set that becomes batched at
+-- batch_expired).
+INVAR n_submitted <= 3;
+
+-- The return window cannot expire while a slot is still submitted,
+-- batched, or pending_settlement, so a later cycle cannot settle an
+-- old batched entry.
+INVAR env.return_window_expired ->
+        !tx0_in_pipeline & !tx1_in_pipeline
+      & !tx2_in_pipeline & !tx3_in_pipeline;
+
+-- A same-class credit in-cycle requires a same-class debit in-cycle
+-- (Nacha file balance at origination). When cycle_complete, a settled
+-- debit of a class requires a credit of that class in-cycle; regular
+-- settled counts are equal (outside the Φ2 INVARSPEC in 99_main.smv).
+INVAR (micro_credit_incycle -> micro_debit_incycle)
+    & (regular_credit_incycle -> regular_debit_incycle);
+INVAR cycle_complete ->
+        ( (n_debits_micro > 0 -> micro_credit_incycle)
+        & (n_debits_regular > 0 -> regular_credit_incycle)
+        & (n_credits_regular = n_debits_regular)
+        & (n_debits_micro > 0 -> n_credits_micro > 0) );
+
