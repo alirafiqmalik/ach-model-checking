@@ -1,0 +1,413 @@
+-- ===================================================================
+-- 40_rdfi.smv
+-- Receiving Depository Financial Institution (RDFI).
+-- Processes Pending_Settlement transactions forwarded by the ACH
+-- Operator, non-deterministically dispositions them as settled or
+-- returned per Nacha Article 4, selects an appropriate Nacha return
+-- code from the feasible set for the target account status, and
+-- handles reversal entries within the 5-banking-day window.
+
+-- Concerns: account status and payment states, trusted-bank role for the
+-- RDFI, shared c_info / c_dollar channels, module signature, nuXmv
+-- dialect, Receiver-driven authorization, Operator-side R19/R36
+-- handling, RDFI disposition and reversal rules.
+
+-- Interface (Pattern A):
+-- Send-request fields are flat VARs on this module with the names
+-- c_info_req_* / c_dollar_req_*. No MODULE c_info_send_request
+-- wrapper type is used.
+
+-- The RDFI reads forward-target fields from a_ref (ach_operator):
+-- a_ref.fwd_tx_id : 0..3
+-- a_ref.fwd_receiver_id : 0..1
+-- a_ref.fwd_tx_code : {debit, credit}
+-- a_ref.fwd_recv_acct_type : {checking, savings, credit_card}
+-- a_ref.fwd_amount : {MICRO, SMALL, LARGE}
+-- a_ref.fwd_is_reversal : boolean
+-- ===================================================================
+
+MODULE rdfi(c_info, c_dollar, env, a_ref, r_0_ref, r_1_ref)
+
+VAR
+  -- ----------------------------------------------------------------
+  -- RDFI lifecycle FSM.
+  -- ----------------------------------------------------------------
+  fsm_state : {
+    idle,                    -- initial
+    receiving_settlement,    -- received forward from the ACH Operator
+
+    data_acceptance_check,   -- RDFI-side data-acceptance phase
+
+    accepted,                -- data acceptance passed
+
+    account_lookup,          -- consult rj_account_status
+
+    processing_credit,       -- tx_code = credit branch
+
+    processing_debit,        -- tx_code = debit branch
+
+    settled_state,           -- settlement complete
+
+    returning,               -- emitting RETURN_NOTICE with a Nacha code
+
+    reversed_state,          -- valid REVERSAL_NOTICE within 5-day window
+
+    post_return_idle         -- quiescent after a return
+
+  };
+
+  -- ----------------------------------------------------------------
+  -- RDFI view of each Receiver's account status.
+  -- Nondeterministic at init; Receiver may change via A-1.
+  -- ----------------------------------------------------------------
+  r0_account_status : { ACTIVE, FROZEN, CLOSED, DORMANT, DEBIT_BLOCKED,
+                        CREDIT_BLOCKED, NO_ACCOUNT, INVALID_ACCOUNT_NUMBER,
+                        UNAUTHORIZED };
+  r1_account_status : { ACTIVE, FROZEN, CLOSED, DORMANT, DEBIT_BLOCKED,
+                        CREDIT_BLOCKED, NO_ACCOUNT, INVALID_ACCOUNT_NUMBER,
+                        UNAUTHORIZED };
+
+  -- Last global tx slot the RDFI started processing.
+  -- 4 encodes "none" (valid slot ids are 0..3).
+  last_processed_tx_id : 0..4;
+
+  -- Return code chosen for a returning disposition (Nacha subset used
+  -- in this model).
+  selected_return_code : { R01, R02, R03, R04, R07, R08,
+                           R10, R16, R19, R29, R36, none_rc };
+
+  -- ----------------------------------------------------------------
+  -- Flat outgoing send-request VARs (Pattern A).
+  -- ----------------------------------------------------------------
+  c_info_req_valid               : boolean;
+  c_info_req_sender              : {o_0, o_1, bo, a, br, r_0, r_1, none_addr};
+  c_info_req_receiver            : {o_0, o_1, bo, a, br, r_0, r_1, none_addr};
+  c_info_req_msg_type            : {LINK_REQ, LINK_ACK, VERIFY_REQ, VERIFY_ACK,
+                                    GRANT_AUTH, REVOKE_AUTH,
+                                    PAYMENT_INIT, BATCH_FORWARD, BATCH_ACK,
+                                    SETTLEMENT_REQ, SETTLEMENT_ACK,
+                                    RETURN_NOTICE, REVERSAL_NOTICE, none_msg};
+  c_info_req_payload_tx_id       : 0..3;
+  c_info_req_payload_return_code : {R01, R02, R03, R04, R07, R08, R10,
+                                    R16, R19, R29, R36, none_rc};
+  c_info_req_payload_auth_method : {manual_link, web_login, micro_deposit, none_auth};
+
+  c_dollar_req_valid         : boolean;
+  c_dollar_req_sender        : {o_0, o_1, bo, a, br, r_0, r_1, none_addr};
+  c_dollar_req_receiver      : {o_0, o_1, bo, a, br, r_0, r_1, none_addr};
+  c_dollar_req_msg_type      : {FUND_DEBIT, FUND_CREDIT, FUND_REVERSE, none_msg};
+  c_dollar_req_payload_tx_id : 0..3;
+  c_dollar_req_amount        : {MICRO, SMALL, LARGE, none_amt};
+
+-- =====================================================================
+-- Helper DEFINEs
+-- =====================================================================
+DEFINE
+  -- ------------------------------------------------------------------
+  -- Inbound stimuli on the shared c_info bus.
+  -- ------------------------------------------------------------------
+  _inbound_settlement :=
+    c_info.occupied
+    & c_info.sender   = a
+    & c_info.receiver = br
+    & (c_info.msg_type = BATCH_FORWARD
+       | c_info.msg_type = SETTLEMENT_REQ);
+
+  _inbound_reversal :=
+    c_info.occupied
+    & c_info.sender   = a
+    & c_info.receiver = br
+    & c_info.msg_type = REVERSAL_NOTICE;
+
+  -- Receiver-driven account-state change signal; reads r_{0,1}_ref.fsm_state.
+  _r0_state_changing := r_0_ref.fsm_state = account_state_changed;
+  _r1_state_changing := r_1_ref.fsm_state = account_state_changed;
+
+  -- ------------------------------------------------------------------
+  -- Tx projections read from a_ref (ach_operator).
+  -- Interface documented in module header.
+  -- ------------------------------------------------------------------
+  _tx_id          := a_ref.fwd_tx_id;          -- 0..3
+  _tx_receiver_id := a_ref.fwd_receiver_id;    -- 0..1
+  _tx_code        := a_ref.fwd_tx_code;        -- {debit, credit}
+  _tx_recv_acct   := a_ref.fwd_recv_acct_type; -- {checking, savings, credit_card}
+  _tx_amount      := a_ref.fwd_amount;         -- {MICRO, SMALL, LARGE}
+  _tx_is_reversal := a_ref.fwd_is_reversal;    -- boolean
+
+  -- Account status of the currently targeted Receiver.
+  _current_acct_status := case
+    _tx_receiver_id = 0 : r0_account_status;
+    TRUE                : r1_account_status;
+  esac;
+
+  -- Reversal window.
+  _reversal_window_open := !env.return_window_expired;
+
+  -- ------------------------------------------------------------------
+  -- Must-return: the account status leaves the RDFI no admissible
+  -- settlement path (Nacha Article 4 per ).
+  -- ------------------------------------------------------------------
+  _must_return :=
+      _current_acct_status = CLOSED
+    | _current_acct_status = NO_ACCOUNT
+    | _current_acct_status = INVALID_ACCOUNT_NUMBER
+    | _current_acct_status = UNAUTHORIZED
+    | (_current_acct_status = FROZEN         & _tx_code = debit)
+    | (_current_acct_status = DEBIT_BLOCKED  & _tx_code = debit)
+    | (_current_acct_status = CREDIT_BLOCKED & _tx_code = credit);
+
+  -- Bounded coercion of last_processed_tx_id into payload 0..3.
+  _tx_id_for_payload := case
+    last_processed_tx_id < 4 : last_processed_tx_id;
+    TRUE                     : 0;
+  esac;
+
+-- =====================================================================
+-- ASSIGN block
+-- =====================================================================
+ASSIGN
+  init(fsm_state)            := idle;
+  init(r0_account_status)    := { ACTIVE, FROZEN, CLOSED, DORMANT,
+                                  DEBIT_BLOCKED, CREDIT_BLOCKED,
+                                  NO_ACCOUNT, INVALID_ACCOUNT_NUMBER,
+                                  UNAUTHORIZED };
+  init(r1_account_status)    := { ACTIVE, FROZEN, CLOSED, DORMANT,
+                                  DEBIT_BLOCKED, CREDIT_BLOCKED,
+                                  NO_ACCOUNT, INVALID_ACCOUNT_NUMBER,
+                                  UNAUTHORIZED };
+  init(last_processed_tx_id) := 4;
+  init(selected_return_code) := none_rc;
+
+  init(c_info_req_valid)               := FALSE;
+  init(c_info_req_sender)              := br;
+  init(c_info_req_receiver)            := none_addr;
+  init(c_info_req_msg_type)            := none_msg;
+  init(c_info_req_payload_tx_id)       := 0;
+  init(c_info_req_payload_return_code) := none_rc;
+  init(c_info_req_payload_auth_method) := none_auth;
+
+  init(c_dollar_req_valid)         := FALSE;
+  init(c_dollar_req_sender)        := br;
+  init(c_dollar_req_receiver)      := none_addr;
+  init(c_dollar_req_msg_type)      := none_msg;
+  init(c_dollar_req_payload_tx_id) := 0;
+  init(c_dollar_req_amount)        := none_amt;
+
+  -- ----------------------- FSM transitions --------------------------
+  next(fsm_state) := case
+    -- idle -> reversed_state on REVERSAL_NOTICE within 5-day window.
+    fsm_state = idle & _inbound_reversal & _reversal_window_open
+                                                   : reversed_state;
+
+    -- idle -> receiving_settlement on BATCH_FORWARD / SETTLEMENT_REQ.
+    fsm_state = idle & _inbound_settlement         : receiving_settlement;
+
+    -- receiving_settlement -> data_acceptance_check.
+    fsm_state = receiving_settlement               : data_acceptance_check;
+
+    -- data_acceptance_check -> accepted (R19/R36 handled at Operator
+    fsm_state = data_acceptance_check              : accepted;
+
+    -- accepted -> account_lookup.
+    fsm_state = accepted                           : account_lookup;
+
+    -- account_lookup -> processing_{credit|debit} based on tx_code.
+    fsm_state = account_lookup & _tx_code = credit : processing_credit;
+    fsm_state = account_lookup & _tx_code = debit  : processing_debit;
+    fsm_state = account_lookup                     : account_lookup;
+
+    -- Non-deterministic disposition.
+    fsm_state = processing_credit & _must_return   : returning;
+    fsm_state = processing_credit                  : {settled_state, returning};
+    fsm_state = processing_debit  & _must_return   : returning;
+    fsm_state = processing_debit                   : {settled_state, returning};
+
+    -- settled_state -> idle.
+    fsm_state = settled_state                      : idle;
+
+    -- returning -> post_return_idle -> idle (one-step latency).
+    fsm_state = returning                          : post_return_idle;
+    fsm_state = post_return_idle                   : idle;
+
+    -- reversed_state -> idle.
+    fsm_state = reversed_state                     : idle;
+
+    TRUE                                           : fsm_state;
+  esac;
+
+  -- ----------------- Receiver-driven status refresh -----------------
+  next(r0_account_status) := case
+    _r0_state_changing : { ACTIVE, FROZEN, CLOSED, DORMANT,
+                           DEBIT_BLOCKED, CREDIT_BLOCKED,
+                           NO_ACCOUNT, INVALID_ACCOUNT_NUMBER,
+                           UNAUTHORIZED };
+    TRUE               : r0_account_status;
+  esac;
+  next(r1_account_status) := case
+    _r1_state_changing : { ACTIVE, FROZEN, CLOSED, DORMANT,
+                           DEBIT_BLOCKED, CREDIT_BLOCKED,
+                           NO_ACCOUNT, INVALID_ACCOUNT_NUMBER,
+                           UNAUTHORIZED };
+    TRUE               : r1_account_status;
+  esac;
+
+  -- --------------------- last_processed_tx_id ----------------------
+  next(last_processed_tx_id) := case
+    fsm_state = idle & _inbound_settlement & _tx_id <= 3 : _tx_id;
+    fsm_state = idle & _inbound_reversal   & _tx_id <= 3 : _tx_id;
+    TRUE                                                 : last_processed_tx_id;
+  esac;
+
+  -- --------------------- selected_return_code ----------------------
+  next(selected_return_code) := case
+    fsm_state = idle                                : none_rc;
+    fsm_state = settled_state                       : none_rc;
+
+    (fsm_state = processing_credit | fsm_state = processing_debit)
+    & _must_return
+    & _current_acct_status = CLOSED                 : R02;
+
+    (fsm_state = processing_credit | fsm_state = processing_debit)
+    & _must_return
+    & _current_acct_status = NO_ACCOUNT             : R03;
+
+    (fsm_state = processing_credit | fsm_state = processing_debit)
+    & _must_return
+    & _current_acct_status = INVALID_ACCOUNT_NUMBER : R04;
+
+    -- UNAUTHORIZED (debit): R07, R08, R10, R29 feasible (consumer vs
+    -- corporate unauth dispositions collapse to this set).
+    (fsm_state = processing_credit | fsm_state = processing_debit)
+    & _must_return
+    & _current_acct_status = UNAUTHORIZED
+    & _tx_code = debit                              : {R07, R08, R10, R29};
+
+    -- UNAUTHORIZED (credit): only revoke/stop apply.
+    (fsm_state = processing_credit | fsm_state = processing_debit)
+    & _must_return
+    & _current_acct_status = UNAUTHORIZED           : {R07, R08};
+
+    -- FROZEN or DEBIT_BLOCKED on a debit -> R16.
+    (fsm_state = processing_credit | fsm_state = processing_debit)
+    & _must_return
+    & (_current_acct_status = FROZEN | _current_acct_status = DEBIT_BLOCKED)
+    & _tx_code = debit                              : R16;
+
+    -- CREDIT_BLOCKED on a credit: abstract to R02.
+    (fsm_state = processing_credit | fsm_state = processing_debit)
+    & _must_return
+    & _current_acct_status = CREDIT_BLOCKED
+    & _tx_code = credit                             : R02;
+
+    -- ACTIVE + nondet failure branch on a debit -> R01.
+    fsm_state = processing_debit
+    & !_must_return                                 : R01;
+
+    TRUE                                            : selected_return_code;
+  esac;
+
+  -- =================================================================
+  -- Outbound c_info_req_* flat drivers.
+  -- =================================================================
+  next(c_info_req_valid) := case
+    fsm_state = returning      : TRUE;
+    fsm_state = settled_state  : TRUE;
+    fsm_state = reversed_state : TRUE;
+    TRUE                       : FALSE;
+  esac;
+
+  next(c_info_req_sender) := br;
+
+  next(c_info_req_receiver) := case
+    fsm_state = returning      : a;
+    fsm_state = settled_state  : a;
+    fsm_state = reversed_state : a;
+    TRUE                       : none_addr;
+  esac;
+
+  next(c_info_req_msg_type) := case
+    fsm_state = returning      : RETURN_NOTICE;
+    fsm_state = settled_state  : SETTLEMENT_ACK;
+    fsm_state = reversed_state : REVERSAL_NOTICE;
+    TRUE                       : none_msg;
+  esac;
+
+  next(c_info_req_payload_tx_id) := _tx_id_for_payload;
+
+  next(c_info_req_payload_return_code) := case
+    fsm_state = returning & selected_return_code = R01 : R01;
+    fsm_state = returning & selected_return_code = R02 : R02;
+    fsm_state = returning & selected_return_code = R03 : R03;
+    fsm_state = returning & selected_return_code = R04 : R04;
+    fsm_state = returning & selected_return_code = R07 : R07;
+    fsm_state = returning & selected_return_code = R08 : R08;
+    fsm_state = returning & selected_return_code = R10 : R10;
+    fsm_state = returning & selected_return_code = R16 : R16;
+    fsm_state = returning & selected_return_code = R19 : R19;
+    fsm_state = returning & selected_return_code = R29 : R29;
+    fsm_state = returning & selected_return_code = R36 : R36;
+    TRUE                                               : none_rc;
+  esac;
+
+  next(c_info_req_payload_auth_method) := none_auth;
+
+  -- =================================================================
+  -- Outbound c_dollar_req_* flat drivers.
+  -- =================================================================
+  next(c_dollar_req_valid) := case
+    fsm_state = settled_state  : TRUE;
+    fsm_state = reversed_state : TRUE;
+    TRUE                       : FALSE;
+  esac;
+
+  next(c_dollar_req_sender) := br;
+
+  next(c_dollar_req_receiver) := case
+    fsm_state = settled_state  & _tx_receiver_id = 0 : r_0;
+    fsm_state = settled_state  & _tx_receiver_id = 1 : r_1;
+    fsm_state = reversed_state & _tx_receiver_id = 0 : r_0;
+    fsm_state = reversed_state & _tx_receiver_id = 1 : r_1;
+    TRUE                                             : none_addr;
+  esac;
+
+  next(c_dollar_req_msg_type) := case
+    fsm_state = settled_state  & _tx_code = credit : FUND_CREDIT;
+    fsm_state = settled_state  & _tx_code = debit  : FUND_DEBIT;
+    fsm_state = reversed_state                     : FUND_REVERSE;
+    TRUE                                           : none_msg;
+  esac;
+
+  next(c_dollar_req_payload_tx_id) := _tx_id_for_payload;
+
+  next(c_dollar_req_amount) := case
+    (fsm_state = settled_state | fsm_state = reversed_state)
+    & _tx_amount = MICRO : MICRO;
+    (fsm_state = settled_state | fsm_state = reversed_state)
+    & _tx_amount = SMALL : SMALL;
+    (fsm_state = settled_state | fsm_state = reversed_state)
+    & _tx_amount = LARGE : LARGE;
+    TRUE                 : none_amt;
+  esac;
+
+-- =====================================================================
+-- Local INVARs
+-- =====================================================================
+INVAR fsm_state = settled_state   -> selected_return_code = none_rc;
+INVAR fsm_state = post_return_idle -> selected_return_code != none_rc;
+INVAR fsm_state = reversed_state  -> last_processed_tx_id < 4;
+
+INVAR (fsm_state = settled_state
+        & _tx_code = credit
+        & _tx_receiver_id = 0) -> r0_account_status != CREDIT_BLOCKED;
+INVAR (fsm_state = settled_state
+        & _tx_code = credit
+        & _tx_receiver_id = 1) -> r1_account_status != CREDIT_BLOCKED;
+
+INVAR (fsm_state = settled_state
+        & _tx_code = debit
+        & _tx_receiver_id = 0) -> (r0_account_status != FROZEN
+                                 & r0_account_status != DEBIT_BLOCKED);
+INVAR (fsm_state = settled_state
+        & _tx_code = debit
+        & _tx_receiver_id = 1) -> (r1_account_status != FROZEN
+                                 & r1_account_status != DEBIT_BLOCKED);

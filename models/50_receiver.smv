@@ -1,0 +1,319 @@
+-- ===================================================================
+-- 50_receiver.smv
+-- Receiver FSM.
+-- Captures the protocol-facing behavior of a Receiver: granting and
+-- revoking authorization to Originators, responding to micro-deposit
+-- verification, observing fund credits and return notices, and
+-- (adversarially) changing its own account state.
+
+-- Concerns: granting and revoking authorization to Originators,
+-- micro-deposit verification, fund credits and return notices, and
+-- adversarial changes to this Receiver's own account state.
+
+-- Interface (Pattern A):
+-- Flat send-request fields c_info_req_* and dummy c_dollar_req_*
+-- (always valid=FALSE since the Receiver does not send on c_dollar).
+
+-- DEFINEs consumed by 10_originator.smv:
+--   recv_k.grant_to_o0, recv_k.grant_to_o1       : boolean
+--   recv_k.revoke_to_o0, recv_k.revoke_to_o1     : boolean
+--   recv_k.grant_method_to_o0, recv_k.grant_method_to_o1
+--       : {manual_link, web_login, micro_deposit, none_auth}
+-- ===================================================================
+
+MODULE receiver(id, c_info, env)
+
+VAR
+  -- ----------------------------------------------------------------
+  -- Receiver lifecycle FSM.
+  -- ----------------------------------------------------------------
+  fsm_state : {
+    idle,                    -- initial
+    considering_auth,        -- A-1 choice to grant
+    auth_granted,            -- GRANT_AUTH emitted
+    auth_revoked_state,      -- REVOKE_AUTH emitted (Nacha R07/R08)
+    considering_revoke,      -- A-1 choice to revoke
+    responding_to_md,        -- receiving micro-deposit credits
+
+    confirmed_md,            -- VERIFY_ACK emitted
+    rejected_md,             -- MD confirmation failed
+    received_credit,         -- observed a fund credit
+
+    notified_return,         -- RETURN_NOTICE posted
+
+    account_state_changed    -- adversarial self-state change
+
+  };
+
+  -- Per-Originator authorization tracking on the Receiver side.
+  authorized_originators_0 : boolean;
+  authorized_originators_1 : boolean;
+
+  -- Link method selected when authorizing each Originator.
+  link_method_used_0 : { manual_link, web_login, micro_deposit, none_auth };
+  link_method_used_1 : { manual_link, web_login, micro_deposit, none_auth };
+
+  -- Which Originator's MD flow is currently in progress. Domain 0..2
+  -- with 2 == "none pending".
+  md_pending_for_originator : 0..2;
+
+  -- Running count of MD credits observed.
+  md_received_credits : 0..2;
+
+  -- Adversarial choice of which Originator to target (A-1).
+  target_originator : 0..1;
+
+  -- Link method chosen at GRANT time (nondeterministic).
+  chosen_link_method : { manual_link, web_login, micro_deposit, none_auth };
+
+  -- ----------------------------------------------------------------
+  -- Flat outgoing send-request VARs (Pattern A).
+  -- ----------------------------------------------------------------
+  c_info_req_valid               : boolean;
+  c_info_req_sender              : {o_0, o_1, bo, a, br, r_0, r_1, none_addr};
+  c_info_req_receiver            : {o_0, o_1, bo, a, br, r_0, r_1, none_addr};
+  c_info_req_msg_type            : {LINK_REQ, LINK_ACK, VERIFY_REQ, VERIFY_ACK,
+                                    GRANT_AUTH, REVOKE_AUTH,
+                                    PAYMENT_INIT, BATCH_FORWARD, BATCH_ACK,
+                                    SETTLEMENT_REQ, SETTLEMENT_ACK,
+                                    RETURN_NOTICE, REVERSAL_NOTICE, none_msg};
+  c_info_req_payload_tx_id       : 0..3;
+  c_info_req_payload_return_code : {R01, R02, R03, R04, R07, R08, R10,
+                                    R16, R19, R29, R36, none_rc};
+  c_info_req_payload_auth_method : {manual_link, web_login, micro_deposit, none_auth};
+
+-- =====================================================================
+-- Helper DEFINEs
+-- =====================================================================
+DEFINE
+  -- Resolve this instance's channel address from the id parameter.
+  _self := case
+    id = 0 : r_0;
+    TRUE   : r_1;
+  esac;
+
+  -- Inbound c_info messages targeting this Receiver.
+  _inbound_verify_req :=
+    c_info.occupied & c_info.receiver = _self
+    & c_info.msg_type = VERIFY_REQ;
+
+  _inbound_return_notice :=
+    c_info.occupied & c_info.receiver = _self
+    & c_info.msg_type = RETURN_NOTICE;
+
+  _inbound_link_ack :=
+    c_info.occupied & c_info.receiver = _self
+    & c_info.msg_type = LINK_ACK;
+
+  _sender_is_o0 := c_info.sender = o_0;
+  _sender_is_o1 := c_info.sender = o_1;
+
+  _target_addr := case
+    target_originator = 0 : o_0;
+    TRUE                  : o_1;
+  esac;
+
+  -- ------------------------------------------------------------------
+  -- Interface DEFINEs consumed by 10_originator.smv.
+  -- These signal GRANT_AUTH / REVOKE_AUTH actions for one step
+  -- (on the commit step when the Receiver asserts its send-request).
+  -- The link method used at grant is exposed per-target.
+
+  -- ------------------------------------------------------------------
+  grant_to_o0 := fsm_state = considering_auth & target_originator = 0;
+  grant_to_o1 := fsm_state = considering_auth & target_originator = 1;
+
+  revoke_to_o0 := fsm_state = considering_revoke & target_originator = 0;
+  revoke_to_o1 := fsm_state = considering_revoke & target_originator = 1;
+
+  grant_method_to_o0 := case
+    grant_to_o0 : chosen_link_method;
+    TRUE        : none_auth;
+  esac;
+  grant_method_to_o1 := case
+    grant_to_o1 : chosen_link_method;
+    TRUE        : none_auth;
+  esac;
+
+  -- ------------------------------------------------------------------
+  -- c_dollar_req_* dummy drivers. The Receiver module signature
+  -- has no c_dollar parameter, so the Receiver
+  -- cannot drive monetary traffic. We expose quiescent c_dollar_req
+  -- DEFINEs so the c_dollar_channel can still be wired uniformly
+  -- (see 99_main.smv).
+  -- ------------------------------------------------------------------
+  c_dollar_req_valid         := FALSE;
+  c_dollar_req_sender        := _self;
+  c_dollar_req_receiver      := none_addr;
+  c_dollar_req_msg_type      := none_msg;
+  c_dollar_req_payload_tx_id := 0;
+  c_dollar_req_amount        := none_amt;
+
+-- =====================================================================
+-- ASSIGN block
+-- =====================================================================
+ASSIGN
+  init(fsm_state)                 := idle;
+  init(authorized_originators_0)  := FALSE;
+  init(authorized_originators_1)  := FALSE;
+  init(link_method_used_0)        := none_auth;
+  init(link_method_used_1)        := none_auth;
+  init(md_pending_for_originator) := 2;
+  init(md_received_credits)       := 0;
+  init(target_originator)         := 0;
+  init(chosen_link_method)        := none_auth;
+
+  init(c_info_req_valid)               := FALSE;
+  init(c_info_req_sender)              := _self;
+  init(c_info_req_receiver)            := none_addr;
+  init(c_info_req_msg_type)            := none_msg;
+  init(c_info_req_payload_tx_id)       := 0;
+  init(c_info_req_payload_return_code) := none_rc;
+  init(c_info_req_payload_auth_method) := none_auth;
+
+  -- ----------------------- FSM transitions --------------------------
+  next(fsm_state) := case
+    fsm_state = idle & _inbound_verify_req         : responding_to_md;
+    fsm_state = idle & _inbound_return_notice      : notified_return;
+
+    fsm_state = idle                               :
+        { idle,
+          considering_auth,
+          considering_revoke,
+          received_credit,
+          account_state_changed };
+
+    fsm_state = considering_auth                   : auth_granted;
+    fsm_state = auth_granted                       : idle;
+
+    fsm_state = considering_revoke                 : auth_revoked_state;
+    fsm_state = auth_revoked_state                 : idle;
+
+    fsm_state = responding_to_md & md_received_credits = 2
+                                                   : { confirmed_md, rejected_md };
+    fsm_state = responding_to_md                   : responding_to_md;
+
+    fsm_state = confirmed_md                       : idle;
+    fsm_state = rejected_md                        : idle;
+
+    fsm_state = received_credit                    : idle;
+    fsm_state = notified_return                    : idle;
+    fsm_state = account_state_changed              : idle;
+
+    TRUE                                           : fsm_state;
+  esac;
+
+  -- ------------- authorized_originators -----------------------------
+  next(authorized_originators_0) := case
+    fsm_state = considering_auth   & target_originator = 0 : TRUE;
+    fsm_state = considering_revoke & target_originator = 0 : FALSE;
+    TRUE                                                   : authorized_originators_0;
+  esac;
+  next(authorized_originators_1) := case
+    fsm_state = considering_auth   & target_originator = 1 : TRUE;
+    fsm_state = considering_revoke & target_originator = 1 : FALSE;
+    TRUE                                                   : authorized_originators_1;
+  esac;
+
+  -- ------------- link_method_used -----------------------------------
+  next(link_method_used_0) := case
+    fsm_state = considering_auth   & target_originator = 0 : chosen_link_method;
+    fsm_state = considering_revoke & target_originator = 0 : none_auth;
+    TRUE                                                   : link_method_used_0;
+  esac;
+  next(link_method_used_1) := case
+    fsm_state = considering_auth   & target_originator = 1 : chosen_link_method;
+    fsm_state = considering_revoke & target_originator = 1 : none_auth;
+    TRUE                                                   : link_method_used_1;
+  esac;
+
+  -- ------------- target_originator (adversarial choice) -------------
+  next(target_originator) := case
+    fsm_state = idle                     : {0, 1};
+    fsm_state = responding_to_md
+    & md_pending_for_originator < 2      : md_pending_for_originator;
+    TRUE                                 : target_originator;
+  esac;
+
+  -- ------------- chosen_link_method (nondet per U1) -----------------
+  next(chosen_link_method) := case
+    fsm_state = idle : { manual_link, web_login, micro_deposit, none_auth };
+    TRUE             : chosen_link_method;
+  esac;
+
+  -- ------------- md_pending_for_originator --------------------------
+  next(md_pending_for_originator) := case
+    fsm_state = idle & _inbound_verify_req & _sender_is_o0 : 0;
+    fsm_state = idle & _inbound_verify_req & _sender_is_o1 : 1;
+    fsm_state = confirmed_md : 2;
+    fsm_state = rejected_md  : 2;
+    TRUE                                                   : md_pending_for_originator;
+  esac;
+
+  -- ------------- md_received_credits --------------------------------
+  -- Abstraction: advance nondet while in responding_to_md with
+  -- env.settlement_started (the credits travel on c_dollar, not
+  -- observable on this module per ).
+  next(md_received_credits) := case
+    fsm_state = responding_to_md & md_received_credits < 2
+    & env.settlement_started : { md_received_credits,
+                                 md_received_credits + 1 };
+    fsm_state = idle         : 0;
+    fsm_state = confirmed_md : 0;
+    fsm_state = rejected_md  : 0;
+    TRUE                     : md_received_credits;
+  esac;
+
+  -- =================================================================
+  -- Outbound c_info_req_* flat drivers.
+  -- =================================================================
+  next(c_info_req_valid) := case
+    fsm_state = considering_auth        : TRUE;
+    fsm_state = considering_revoke      : TRUE;
+    fsm_state = confirmed_md            : TRUE;
+    fsm_state = account_state_changed   : TRUE;
+    TRUE                                : FALSE;
+  esac;
+
+  next(c_info_req_sender) := _self;
+
+  next(c_info_req_receiver) := case
+    fsm_state = considering_auth        : _target_addr;
+    fsm_state = considering_revoke      : _target_addr;
+    fsm_state = confirmed_md            : _target_addr;
+    fsm_state = account_state_changed   : br;
+    TRUE                                : none_addr;
+  esac;
+
+  next(c_info_req_msg_type) := case
+    fsm_state = considering_auth        : GRANT_AUTH;
+    fsm_state = considering_revoke      : REVOKE_AUTH;
+    fsm_state = confirmed_md            : VERIFY_ACK;
+    fsm_state = account_state_changed   : none_msg;
+    TRUE                                : none_msg;
+  esac;
+
+  next(c_info_req_payload_tx_id) := 0;
+
+  next(c_info_req_payload_return_code) := none_rc;
+
+  next(c_info_req_payload_auth_method) := case
+    fsm_state = considering_auth
+    & chosen_link_method = manual_link     : manual_link;
+    fsm_state = considering_auth
+    & chosen_link_method = web_login       : web_login;
+    fsm_state = considering_auth
+    & chosen_link_method = micro_deposit   : micro_deposit;
+    TRUE                                   : none_auth;
+  esac;
+
+-- =====================================================================
+-- Local INVARs
+-- =====================================================================
+INVAR authorized_originators_0 <-> (link_method_used_0 != none_auth);
+INVAR authorized_originators_1 <-> (link_method_used_1 != none_auth);
+
+INVAR md_received_credits > 0 -> md_pending_for_originator < 2;
+
+INVAR fsm_state = confirmed_md -> md_received_credits = 2;
+INVAR fsm_state = rejected_md  -> md_received_credits = 2;

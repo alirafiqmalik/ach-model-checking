@@ -1,0 +1,580 @@
+-- ============================================================================
+-- 20_odfi.smv -- ODFI (Originating Depository Financial Institution) FSM
+-- ============================================================================
+-- MODULE odfi(c_info, c_dollar, env, o_0_ref, o_1_ref)
+--
+-- The ODFI is modeled as trusted: it applies the Nacha Operating Rules
+-- faithfully and does not collude with adversaries.  This FSM captures
+-- only specification-compliant behavior.  It reads each Originator's
+-- tx slots through o_0_ref / o_1_ref read-only; downstream
+-- payment_state updates are cascaded in 60_global_constraints.smv from
+-- the ODFI-side signals exported here.
+-- ============================================================================
+
+MODULE odfi(c_info, c_dollar, env, o_0_ref, o_1_ref)
+
+VAR
+  -- ========================================================================
+  -- FSM state
+  -- ========================================================================
+  fsm_state : {
+    -- Initial / quiescent; ODFI receives Originator c_info traffic.
+    idle,
+
+    -- Running verifyAccount for a Third-Party Sender (micro-deposit path).
+    verifying_tps,
+
+    -- verifyAccount completed; TPS may originate debits.
+    tps_verified,
+
+    -- verifyAccount failed (e.g., non-micro-deposit method offered).
+    tps_rejected,
+
+    -- Nacha data-format checks on an incoming ACH entry.
+    validating_entry,
+
+    -- Entry passed data-format validation; stays Submitted until batch
+    -- transmission.
+    validation_ok,
+
+    -- Entry failed data-format validation; the owning tx slot must move
+    -- to rejected in its Originator module.
+    validation_rejected,
+
+    -- Validated entries accumulate during the open collection window.
+    batch_collecting,
+
+    -- Closed batch forwarded to the ACH Operator (atomic batch step).
+    batch_forwarded,
+
+    -- Waiting for BATCH_ACK from the ACH Operator.
+    awaiting_operator_ack,
+
+    -- Operator acknowledged the batch; env.window_count tracks cycles.
+    operator_acked,
+
+    -- Handling RETURN_NOTICE from the ACH Operator or RDFI (Article 3).
+    processing_return,
+
+    -- Post-return quiescent state before the next cycle.
+    idle_post_return,
+
+    -- linkExternalAccount: commercially reasonable check (underspecified).
+    processing_link_req,
+    link_acked,
+
+    -- Echo BATCH_ACK to each Originator (single-slot c_info bus).
+    ack_o0,
+    ack_o1
+  };
+
+  -- ========================================================================
+  -- entry_validated / batch_submitted: latch validated intake and batch
+  -- submission to the Operator respectively.
+  -- ========================================================================
+  entry_validated  : boolean;
+  batch_submitted  : boolean;
+
+  -- ========================================================================
+  -- Per-entry / per-cycle bookkeeping
+  -- ========================================================================
+  -- last_processed_tx_id: 4 = none; 0..3 index global slots
+  -- (originator_id * 2 + local_tx_id).
+  last_processed_tx_id : 0..4;
+
+  -- Third-Party Sender verification method (micro-deposit only here).
+  verify_method_for_tps : {micro_deposit, none_auth};
+
+
+  -- latched on entry to processing_link_req, cleared after link_acked.
+  last_link_requester : {o_0, o_1, none_addr};
+
+  -- ========================================================================
+  -- U3 modelling
+  -- Nacha Appendix 2 Parts 2.4 and 2.5 give conflicting rejection
+  -- criteria for "non-numeric amount" and "invalid tx_code" entries.
+  -- We model admissible batch-processing behaviors: (a) reject the whole
+  -- batch, or (b) accept but flag the offending entry.
+
+  -- Because our tx-slot enums only carry structurally-valid values
+  -- (tx_code in {debit,credit}, amount in {MICRO,SMALL,LARGE}), we cannot
+  -- literally produce the error condition in the slot; instead we lift it
+  -- to an internal nondeterministic flag u3_error_triggered that the
+  -- model checker chooses freely at each entry-validation step, paired
+  -- with u3_variant that selects which of the two Nacha branches to take.
+  -- ========================================================================
+  u3_error_triggered : boolean;
+  u3_variant         : {u3_reject_batch, u3_accept_flag};
+
+  -- Latched TRUE whenever variant (b) was exercised on at least one entry
+  -- in the current cycle ("accept but flag"). Reset at cycle boundary.
+  u3_flag_entries : boolean;
+
+  -- Latched TRUE when variant (a) fired ("reject entire batch"). Read by
+  -- 60_global_constraints.smv to cascade whole-batch rejection across the
+  -- four tx slots in the current collection window.
+  u3_batch_reject : boolean;
+
+  -- ========================================================================
+  -- Outgoing c_info send_request
+  -- Exposed flat so main/99 can wire them into c_info_channel without
+  -- requiring cross-module write access (NuSMV each-var-single-writer rule).
+  -- The seven fields below together realise the c_info_send_request schema
+  -- {valid, sender, receiver, msg_type, payload_tx_id, payload_return_code
+  -- payload_auth_method}.
+  -- ========================================================================
+  c_info_req_valid               : boolean;
+  c_info_req_sender              : {o_0, o_1, bo, a, br, r_0, r_1, none_addr};
+  c_info_req_receiver            : {o_0, o_1, bo, a, br, r_0, r_1, none_addr};
+  c_info_req_msg_type            : {LINK_REQ, LINK_ACK, VERIFY_REQ, VERIFY_ACK,
+                                    GRANT_AUTH, REVOKE_AUTH,
+                                    PAYMENT_INIT, BATCH_FORWARD, BATCH_ACK,
+                                    SETTLEMENT_REQ, SETTLEMENT_ACK,
+                                    RETURN_NOTICE, REVERSAL_NOTICE, none_msg};
+  c_info_req_payload_tx_id       : 0..3;
+  c_info_req_payload_return_code : {R01, R02, R03, R04, R07, R08, R10,
+                                    R16, R19, R29, R36, none_rc};
+  c_info_req_payload_auth_method : {manual_link, web_login, micro_deposit, none_auth};
+
+  -- ========================================================================
+  -- Outgoing c_dollar send_request -- minimal.
+  -- The ODFI does not move funds at origination; settlement fund movement
+  -- is driven by the ACH Operator per
+  -- processing. These fields stay quiescent in the base model and are
+  -- wired for completeness / future extension.
+  -- ========================================================================
+  c_dollar_req_valid         : boolean;
+  c_dollar_req_sender        : {o_0, o_1, bo, a, br, r_0, r_1, none_addr};
+  c_dollar_req_receiver      : {o_0, o_1, bo, a, br, r_0, r_1, none_addr};
+  c_dollar_req_msg_type      : {FUND_DEBIT, FUND_CREDIT, FUND_REVERSE, none_msg};
+  c_dollar_req_payload_tx_id : 0..3;
+  c_dollar_req_amount        : {MICRO, SMALL, LARGE, none_amt};
+
+-- ============================================================================
+-- DEFINEs: incoming-channel guards and per-entry field projections
+-- ============================================================================
+DEFINE
+
+  -- ------------------------------------------------------------------------
+  -- c_info inbound guards (
+  -- "C_info.rcv(sender, receiver, msgData) as a transition guard that
+  -- matches and accepts the msgData when its type and sender fields
+  -- match the guard parameters")
+  -- ------------------------------------------------------------------------
+  rx_for_bo        := c_info.occupied & c_info.receiver = bo;
+  rx_payment_init  := rx_for_bo & c_info.msg_type = PAYMENT_INIT;
+  rx_verify_req    := rx_for_bo & c_info.msg_type = VERIFY_REQ;
+  rx_batch_ack     := rx_for_bo & c_info.msg_type = BATCH_ACK;
+  rx_return_notice := rx_for_bo & c_info.msg_type = RETURN_NOTICE;
+  rx_link_req      := rx_for_bo & c_info.msg_type = LINK_REQ;
+
+  -- ------------------------------------------------------------------------
+  -- Global tx index -> tx-slot field projections
+  -- Global tx_id = originator_id*2 + local_tx_id.
+  -- tx_id owner local slot
+  -- 0 o_0 tx_0
+  -- 1 o_0 tx_1
+  -- 2 o_1 tx_0
+  -- 3 o_1 tx_1
+  -- ------------------------------------------------------------------------
+  cur_tx_sec_code := case
+    c_info.payload_tx_id = 0 : o_0_ref.tx_0.sec_code;
+    c_info.payload_tx_id = 1 : o_0_ref.tx_1.sec_code;
+    c_info.payload_tx_id = 2 : o_1_ref.tx_0.sec_code;
+    TRUE                     : o_1_ref.tx_1.sec_code;
+  esac;
+
+  cur_tx_tx_code := case
+    c_info.payload_tx_id = 0 : o_0_ref.tx_0.tx_code;
+    c_info.payload_tx_id = 1 : o_0_ref.tx_1.tx_code;
+    c_info.payload_tx_id = 2 : o_1_ref.tx_0.tx_code;
+    TRUE                     : o_1_ref.tx_1.tx_code;
+  esac;
+
+  cur_tx_amount := case
+    c_info.payload_tx_id = 0 : o_0_ref.tx_0.amount;
+    c_info.payload_tx_id = 1 : o_0_ref.tx_1.amount;
+    c_info.payload_tx_id = 2 : o_1_ref.tx_0.amount;
+    TRUE                     : o_1_ref.tx_1.amount;
+  esac;
+
+  -- ------------------------------------------------------------------------
+  -- Nacha data-format checks (ODFI validates entry against data-format rules).
+  --   * sec_code = WEB
+  --   * tx_code in {debit, credit}
+  --   * amount in {MICRO, SMALL, LARGE}
+  -- Routing/account numerical validity is handled by enum-domain
+  -- restrictions on each tx slot (only valid routing/account identifiers).
+  -- Structural validity therefore always holds here; additional edge
+  -- cases are subsumed by the u3_error_triggered nondet flag together with
+  -- the U3 commentary above.
+  -- ------------------------------------------------------------------------
+  entry_format_valid_by_enum :=
+        cur_tx_sec_code = WEB
+      & (cur_tx_tx_code = debit  | cur_tx_tx_code = credit)
+      & (cur_tx_amount  = MICRO  | cur_tx_amount  = SMALL
+         | cur_tx_amount = LARGE);
+
+  -- Effective validation outcome combines the enum-level structural check
+  -- with the U3 nondeterministic branch selection:
+  -- * u3_error_triggered & variant=reject_batch => entry fails validation
+  -- (variant (a))
+  -- * u3_error_triggered & variant=accept_flag => entry passes but is
+  -- flagged (variant (b))
+  -- * !u3_error_triggered => enum check rules
+  entry_would_validate :=
+        entry_format_valid_by_enum
+      & !(u3_error_triggered & u3_variant = u3_reject_batch);
+
+  -- Helper: originator endpoint that owns `last_processed_tx_id`
+  last_tx_owner := case
+    last_processed_tx_id = 0 | last_processed_tx_id = 1 : o_0;
+    last_processed_tx_id = 2 | last_processed_tx_id = 3 : o_1;
+    TRUE                                                 : none_addr;
+  esac;
+
+-- ============================================================================
+-- ASSIGN: initial values and transition relations
+-- ============================================================================
+ASSIGN
+
+  -- ------------------------------------------------------------------------
+  -- Initial values
+  -- ------------------------------------------------------------------------
+  init(fsm_state)            := idle;
+  init(entry_validated)      := FALSE;
+  init(batch_submitted)      := FALSE;
+  init(last_processed_tx_id) := 4;            -- 4 = none
+  init(verify_method_for_tps):= none_auth;
+  init(u3_error_triggered)   := FALSE;
+  init(u3_variant)           := u3_reject_batch;
+  init(u3_flag_entries)      := FALSE;
+  init(u3_batch_reject)      := FALSE;
+  init(last_link_requester)  := none_addr;
+
+  init(c_info_req_valid)               := FALSE;
+  init(c_info_req_sender)              := bo;
+  init(c_info_req_receiver)            := none_addr;
+  init(c_info_req_msg_type)            := none_msg;
+  init(c_info_req_payload_tx_id)       := 0;
+  init(c_info_req_payload_return_code) := none_rc;
+  init(c_info_req_payload_auth_method) := none_auth;
+
+  init(c_dollar_req_valid)         := FALSE;
+  init(c_dollar_req_sender)        := bo;
+  init(c_dollar_req_receiver)      := none_addr;
+  init(c_dollar_req_msg_type)      := none_msg;
+  init(c_dollar_req_payload_tx_id) := 0;
+  init(c_dollar_req_amount)        := none_amt;
+
+  -- ------------------------------------------------------------------------
+  -- Main FSM transition table (guards are propositional formulas over local
+  -- state, received messages, and environment variables).
+  -- ------------------------------------------------------------------------
+  next(fsm_state) := case
+
+    -- ==== idle ==========================================================
+
+    -- idle -> verifying_tps on VERIFY_REQ (Third-Party Senders complete
+    -- micro-deposit verification before initiating debits).
+    fsm_state = idle & rx_verify_req :
+      verifying_tps;
+
+    -- idle -> validating_entry on PAYMENT_INIT (Nacha Article 2.2.1
+    -- data-format rules).
+    fsm_state = idle & rx_payment_init :
+      validating_entry;
+
+    -- idle -> processing_return on RETURN_NOTICE from ACH Operator or RDFI
+    -- (Article 3 return / error remediation path).
+    fsm_state = idle & rx_return_notice :
+      processing_return;
+
+    -- idle -> processing_link_req on LINK_REQ from an Originator.
+    fsm_state = idle & rx_link_req :
+      processing_link_req;
+
+    -- processing_link_req -> {link_acked, idle}: "commercially
+    -- reasonable" check is underspecified — the BO may accept the link
+    -- or silently drop it on this step.
+    fsm_state = processing_link_req :
+      {link_acked, idle};
+
+    -- link_acked -> idle: single-step LINK_ACK emission happens here
+    -- (see c_info_req_* tables below), then back to idle.
+    fsm_state = link_acked :
+      idle;
+
+    -- ==== TPS verification =============
+    fsm_state = verifying_tps & verify_method_for_tps = micro_deposit :
+      tps_verified;
+    fsm_state = verifying_tps :
+      tps_rejected;
+
+    -- After emitting VERIFY_ACK, return to idle for the next cycle.
+    fsm_state = tps_verified : idle;
+    fsm_state = tps_rejected : idle;
+
+    -- ==== Data-format validation ==============
+    -- "Valid entries stay in Submitted until batch transmission, and
+    -- invalid entries move at once to Rejected."
+    fsm_state = validating_entry & entry_would_validate :
+      validation_ok;
+    fsm_state = validating_entry & !entry_would_validate :
+      validation_rejected;
+
+    -- validation_ok -> batch_collecting (
+    -- entries accumulate during the collection window).
+    fsm_state = validation_ok :
+      batch_collecting;
+
+    -- validation_rejected -> idle. 60_global_constraints.smv cascades the
+    -- corresponding tx slot to payment_state = rejected.
+    fsm_state = validation_rejected :
+      idle;
+
+    -- ==== Collection window =============================================
+    -- During the open collection window, additional PAYMENT_INIT messages
+    -- are absorbed back into validating_entry.
+    fsm_state = batch_collecting & rx_payment_init :
+      validating_entry;
+
+    -- Window closure -> atomic batch forward. This transition corresponds
+    -- to the synchronized global transition in
+    -- forall e_i. (payment_state = Submitted & batch_expired)
+    -- -> payment_state' = Batched.
+    -- The synchronized tx-slot update is encoded in
+    -- 60_global_constraints.smv; here we set batch_submitted := TRUE and
+    -- emit BATCH_FORWARD.
+    fsm_state = batch_collecting & env.batch_expired :
+      batch_forwarded;
+
+    -- A return may arrive while still collecting (e.g. for an earlier
+    -- cycle's settled entry); branch to return handling.
+    fsm_state = batch_collecting & rx_return_notice :
+      processing_return;
+
+    -- ==== Post-batch handshake ==========================================
+    fsm_state = batch_forwarded :
+      awaiting_operator_ack;
+
+    fsm_state = awaiting_operator_ack & rx_batch_ack :
+      operator_acked;
+
+    fsm_state = awaiting_operator_ack & rx_return_notice :
+      processing_return;
+
+    -- operator_acked -> ack_o0 -> ack_o1 -> idle:
+    -- fan-out BATCH_ACK to each Originator. The single-slot c_info bus
+    -- forces a two-step echo. Book-keeping state resets
+    -- already fire on fsm_state = operator_acked and therefore complete
+    -- before leaving that state.
+    fsm_state = operator_acked :
+      ack_o0;
+    fsm_state = ack_o0 :
+      ack_o1;
+    fsm_state = ack_o1 :
+      idle;
+
+    -- ==== Return handling ===============================================
+    fsm_state = processing_return :
+      idle_post_return;
+
+    fsm_state = idle_post_return :
+      idle;
+
+    TRUE : fsm_state;
+  esac;
+
+  -- ------------------------------------------------------------------------
+  -- entry_validated
+  -- ------------------------------------------------------------------------
+  next(entry_validated) := case
+    fsm_state = validating_entry & entry_would_validate  : TRUE;
+    fsm_state = validation_rejected                      : FALSE;
+    fsm_state = operator_acked                           : FALSE;
+    TRUE                                                  : entry_validated;
+  esac;
+
+  -- ------------------------------------------------------------------------
+  -- batch_submitted
+  -- Set TRUE exactly at the synchronized batch transmission step.
+  -- Cleared at the close of the cycle (operator_acked) so the flag tracks
+  -- the current in-flight batch.
+  -- ------------------------------------------------------------------------
+  next(batch_submitted) := case
+    fsm_state = batch_collecting & env.batch_expired : TRUE;
+    fsm_state = operator_acked                        : FALSE;
+    TRUE                                              : batch_submitted;
+  esac;
+
+  -- ------------------------------------------------------------------------
+  -- last_processed_tx_id: latched from payload_tx_id on each relevant
+  -- inbound c_info message so the ODFI can reference the tx slot after
+  -- the channel occupant advances.
+  -- ------------------------------------------------------------------------
+  next(last_processed_tx_id) := case
+    (fsm_state = idle | fsm_state = batch_collecting) & rx_payment_init :
+      c_info.payload_tx_id;
+    (fsm_state = idle | fsm_state = batch_collecting
+       | fsm_state = awaiting_operator_ack) & rx_return_notice :
+      c_info.payload_tx_id;
+    TRUE : last_processed_tx_id;
+  esac;
+
+  -- Latch which Originator just posted a LINK_REQ so the LINK_ACK step
+  -- can address its reply.
+  next(last_link_requester) := case
+    fsm_state = idle & rx_link_req & c_info.sender = o_0 : o_0;
+    fsm_state = idle & rx_link_req & c_info.sender = o_1 : o_1;
+    fsm_state = link_acked                               : none_addr;
+    TRUE                                                  : last_link_requester;
+  esac;
+
+  -- ------------------------------------------------------------------------
+  -- verify_method_for_tps
+  -- Only micro_deposit is an admissible verification method for TPS.
+  -- ------------------------------------------------------------------------
+  next(verify_method_for_tps) := case
+    fsm_state = idle & rx_verify_req
+                     & c_info.payload_auth_method = micro_deposit :
+      micro_deposit;
+    fsm_state = idle & rx_verify_req :
+      none_auth;
+    fsm_state = tps_verified | fsm_state = tps_rejected :
+      none_auth;
+    TRUE : verify_method_for_tps;
+  esac;
+
+  -- ------------------------------------------------------------------------
+  -- U3 nondet flags
+  -- At each entry-intake step the model checker freely chooses whether a
+  -- "non-numeric amount" or "invalid tx_code" U3 condition occurs, and if
+  -- so which of the two contradictory Nacha branches to take. Reset at
+  -- cycle boundary so each cycle explores fresh branch choices.
+  -- ------------------------------------------------------------------------
+  next(u3_error_triggered) := case
+    fsm_state = idle             & rx_payment_init : {TRUE, FALSE};
+    fsm_state = batch_collecting & rx_payment_init : {TRUE, FALSE};
+    fsm_state = validation_ok | fsm_state = validation_rejected : FALSE;
+    TRUE : u3_error_triggered;
+  esac;
+
+  next(u3_variant) := case
+    fsm_state = idle             & rx_payment_init : {u3_reject_batch, u3_accept_flag};
+    fsm_state = batch_collecting & rx_payment_init : {u3_reject_batch, u3_accept_flag};
+    TRUE : u3_variant;
+  esac;
+
+  -- Variant (b): latch u3_flag_entries when a U3 entry is accepted-but-flagged.
+  next(u3_flag_entries) := case
+    fsm_state = validating_entry
+        & u3_error_triggered
+        & u3_variant = u3_accept_flag
+        & entry_format_valid_by_enum                         : TRUE;
+    fsm_state = operator_acked | fsm_state = idle_post_return : FALSE;
+    TRUE                                                      : u3_flag_entries;
+  esac;
+
+  -- Variant (a): latch u3_batch_reject when a U3 entry triggers
+  -- whole-batch rejection. Observed by 60_global_constraints.smv to
+  -- cascade the reject to every tx slot currently in payment_state =
+  -- submitted for this cycle.
+  next(u3_batch_reject) := case
+    fsm_state = validating_entry
+        & u3_error_triggered
+        & u3_variant = u3_reject_batch                       : TRUE;
+    fsm_state = operator_acked | fsm_state = idle_post_return : FALSE;
+    TRUE                                                      : u3_batch_reject;
+  esac;
+
+  -- ------------------------------------------------------------------------
+  -- Outgoing c_info request: sender is always bo
+  -- ------------------------------------------------------------------------
+  next(c_info_req_sender) := bo;
+
+  -- valid pulse: TRUE exactly when ODFI wishes to emit a c_info message
+  next(c_info_req_valid) := case
+    fsm_state = tps_verified                           : TRUE;  -- VERIFY_ACK (success)
+    fsm_state = tps_rejected                           : TRUE;  -- VERIFY_ACK (failure)
+    fsm_state = validation_rejected                    : TRUE;  -- RETURN_NOTICE to originator
+    fsm_state = batch_collecting & env.batch_expired   : TRUE;  -- BATCH_FORWARD to ACH Operator
+    fsm_state = processing_return                      : TRUE;  -- RETURN_NOTICE forwarded
+    fsm_state = link_acked                             : TRUE;
+    fsm_state = ack_o0                                 : TRUE;
+    fsm_state = ack_o1                                 : TRUE;
+    TRUE                                                : FALSE;
+  esac;
+
+  next(c_info_req_msg_type) := case
+    fsm_state = tps_verified                           : VERIFY_ACK;
+    fsm_state = tps_rejected                           : VERIFY_ACK;
+    fsm_state = validation_rejected                    : RETURN_NOTICE;
+    fsm_state = batch_collecting & env.batch_expired   : BATCH_FORWARD;
+    fsm_state = processing_return                      : RETURN_NOTICE;
+    fsm_state = link_acked                             : LINK_ACK;
+    fsm_state = ack_o0 | fsm_state = ack_o1            : BATCH_ACK;
+    TRUE                                                : none_msg;
+  esac;
+
+  next(c_info_req_receiver) := case
+    fsm_state = tps_verified | fsm_state = tps_rejected : last_tx_owner;
+    fsm_state = validation_rejected                     : last_tx_owner;
+    fsm_state = batch_collecting & env.batch_expired    : a;            -- ACH Operator
+    fsm_state = processing_return                       : last_tx_owner;
+    fsm_state = link_acked                              : last_link_requester;
+    fsm_state = ack_o0                                  : o_0;
+    fsm_state = ack_o1                                  : o_1;
+    TRUE                                                 : none_addr;
+  esac;
+
+  next(c_info_req_payload_tx_id) := case
+    last_processed_tx_id = 0 : 0;
+    last_processed_tx_id = 1 : 1;
+    last_processed_tx_id = 2 : 2;
+    last_processed_tx_id = 3 : 3;
+    TRUE                     : 0;      -- payload_tx_id default when "none"
+  esac;
+
+  -- Return code on ODFI-side rejection: R19 "Amount Field Error" is the
+  -- closest Nacha code for a data-format failure.
+  next(c_info_req_payload_return_code) := case
+    fsm_state = validation_rejected : R19;
+    TRUE                             : none_rc;
+  esac;
+
+  -- On VERIFY_ACK, echo the verification method used for the TPS.
+  next(c_info_req_payload_auth_method) := case
+    (fsm_state = tps_verified | fsm_state = tps_rejected)
+      & verify_method_for_tps = micro_deposit              : micro_deposit;
+    TRUE                                                    : none_auth;
+  esac;
+
+  -- ------------------------------------------------------------------------
+  -- Outgoing c_dollar: quiescent in the base model (see VAR commentary).
+  -- ------------------------------------------------------------------------
+  next(c_dollar_req_valid)         := FALSE;
+  next(c_dollar_req_sender)        := bo;
+  next(c_dollar_req_receiver)      := none_addr;
+  next(c_dollar_req_msg_type)      := none_msg;
+  next(c_dollar_req_payload_tx_id) := 0;
+  next(c_dollar_req_amount)        := none_amt;
+
+-- ============================================================================
+-- INVARs
+-- ============================================================================
+
+-- batch_submitted implies we are past the collection window. The ODFI has
+-- forwarded the batch, is waiting for the
+-- Operator's BATCH_ACK, has received it, has returned to idle for the next
+-- cycle, or is servicing a return.
+INVAR batch_submitted ->
+      (fsm_state = batch_forwarded
+     | fsm_state = awaiting_operator_ack
+     | fsm_state = operator_acked
+     | fsm_state = idle
+     | fsm_state = processing_return);
+
+-- entry_validated is only meaningful for a tracked tx (0..3); the sentinel
+-- value 4 means "none".
+INVAR entry_validated -> last_processed_tx_id < 4;

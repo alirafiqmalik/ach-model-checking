@@ -1,0 +1,188 @@
+-- ====================================================================
+-- 99_main.smv — Top-level composition, SPECs, and JUSTICE
+-- ====================================================================
+-- Composition order:
+
+-- env_i : global timing / logical clock
+-- recv_0, recv_1: adversarial Receivers
+-- orig_0, orig_1: adversarial Originators
+-- odfi_i : ODFI
+-- ach_i : ACH Operator
+-- rdfi_i : RDFI
+-- c_info : info channel
+-- c_dollar : dollar channel
+-- g : global_invariants observer
+
+-- Naming rationale: the bus-address enum domain
+-- {o_0, o_1, bo, a, br, r_0, r_1, none_addr}
+-- shares a namespace with VAR identifiers in
+-- NuSMV, so module *instances* must not collide with enum values.
+-- We instantiate under distinct names (orig_0, odfi_i, etc.). The
+-- *addresses* those instances use on the bus are written as constants
+-- in each participant's outgoing c_info_req_sender / c_dollar_req_sender
+-- (e.g., orig_0 drives sender = o_0 via its own id parameter).
+
+-- Properties:
+-- Phi_1 Continuous Authorization (AG / CTL)
+-- Phi_2 Zero-Sum Invariant (per-class) (AG / CTL)
+-- Phi_3 Settlement Finality (AG / CTL)
+-- Phi_Exec_* Executability witnesses (EF / CTL)
+
+-- Fairness:
+-- JUSTICE on batch window progress and logical-clock advance.
+-- ====================================================================
+
+MODULE main
+
+VAR
+  -- -----------------------------------------------------------------
+  -- Global timing controller. Instance name `env_i` avoids colliding
+  -- with the MODULE type identifier `env`.
+  -- -----------------------------------------------------------------
+  env_i : env;
+
+  -- -----------------------------------------------------------------
+  -- Adversarial Receivers.
+  -- -----------------------------------------------------------------
+  recv_0 : receiver(0, c_info, env_i);
+  recv_1 : receiver(1, c_info, env_i);
+
+  -- -----------------------------------------------------------------
+  -- Adversarial Originators.
+  -- auth_grants_from_r0 / r1 parameters are the Receiver instances; the
+  -- originator reads their grant_to_o*/revoke_to_o*/grant_method_to_o*
+  -- DEFINEs (50_receiver.smv).
+  -- -----------------------------------------------------------------
+  orig_0 : originator(0, c_info, c_dollar, env_i, recv_0, recv_1);
+  orig_1 : originator(1, c_info, c_dollar, env_i, recv_0, recv_1);
+
+  -- -----------------------------------------------------------------
+  -- Trusted intermediaries.
+  -- -----------------------------------------------------------------
+  odfi_i  : odfi(c_info, c_dollar, env_i, orig_0, orig_1);
+  ach_i   : ach_operator(c_info, c_dollar, env_i, odfi_i);
+  rdfi_i  : rdfi(c_info, c_dollar, env_i, ach_i, recv_0, recv_1);
+
+  -- -----------------------------------------------------------------
+  -- Shared communication buses.
+  -- Each channel reads the flat send-request fields that each
+  -- participant exposes (Pattern A).
+  -- -----------------------------------------------------------------
+  c_info   : c_info_channel(orig_0, orig_1, odfi_i, ach_i, rdfi_i,
+                            recv_0, recv_1);
+  c_dollar : c_dollar_channel(orig_0, orig_1, odfi_i, ach_i, rdfi_i,
+                              recv_0, recv_1);
+
+  -- -----------------------------------------------------------------
+  -- Cross-cutting DEFINE / INVAR observer.
+  -- -----------------------------------------------------------------
+  g : global_invariants(env_i, orig_0, orig_1, odfi_i, ach_i, rdfi_i,
+                        recv_0, recv_1);
+
+-- ====================================================================
+-- Helper DEFINEs for SPEC formulation
+-- ====================================================================
+DEFINE
+  -- ------------------------------------------------------------------
+  -- Φ₁ helpers.
+  -- The prior integer step-snapshot timestamps have been replaced by
+  -- the Boolean latches `submitted_while_authorized` and
+  -- `revoked_during_pipeline` on each transaction_slot (see
+  -- 10_originator.smv). The Φ₁ safety predicate simplifies to:
+  -- settled -> (submitted_while_authorized & !revoked_during_pipeline)
+  -- This preserves the semantics
+  -- t_auth < t_init ∧ ¬∃t: t_init ≤ t < t_settle ∧ AccessRevoked(r)@t
+  -- without any integer state.
+  -- ------------------------------------------------------------------
+  phi1_ok_tx0 :=
+      orig_0.tx_0.payment_state = settled
+      -> (   orig_0.tx_0.submitted_while_authorized
+           & !orig_0.tx_0.revoked_during_pipeline );
+
+  phi1_ok_tx1 :=
+      orig_0.tx_1.payment_state = settled
+      -> (   orig_0.tx_1.submitted_while_authorized
+           & !orig_0.tx_1.revoked_during_pipeline );
+
+  phi1_ok_tx2 :=
+      orig_1.tx_0.payment_state = settled
+      -> (   orig_1.tx_0.submitted_while_authorized
+           & !orig_1.tx_0.revoked_during_pipeline );
+
+  phi1_ok_tx3 :=
+      orig_1.tx_1.payment_state = settled
+      -> (   orig_1.tx_1.submitted_while_authorized
+           & !orig_1.tx_1.revoked_during_pipeline );
+
+  -- ------------------------------------------------------------------
+  -- Φ₃ helpers.
+  -- `ResourceAvailable(r, E)` fires at internal-posting time — the
+  -- credit-limit-restored / POSTED→AVAILABLE_FOR_WITHDRAWAL moment —
+  -- which precedes external settlement by the multi-day return window.
+  -- Earliest such state in the originator slot is `batched` (batch
+  -- forwarded to ODFI, internal posting in effect).
+  -- ------------------------------------------------------------------
+  resource_released_tx0 :=
+       orig_0.tx_0.payment_state in {batched, pending_settlement, settled};
+  resource_released_tx1 :=
+       orig_0.tx_1.payment_state in {batched, pending_settlement, settled};
+  resource_released_tx2 :=
+       orig_1.tx_0.payment_state in {batched, pending_settlement, settled};
+  resource_released_tx3 :=
+       orig_1.tx_1.payment_state in {batched, pending_settlement, settled};
+
+-- ====================================================================
+-- Fairness
+-- ====================================================================
+-- "Batch windows progress": window_count is monotonic and bounded at
+-- 3, so requiring window_count = 3 infinitely often asserts that the
+-- three scheduled batch cycles complete each run.
+JUSTICE env_i.window_count = 3;
+
+-- "ACH phase progresses to close": the phase enum is monotonic and
+-- bounded at ph_return_closed, replacing the prior env.step = 20
+-- idiom. Ensures any liveness property (AF / F) has an infinite
+-- trace on which the phase sequence actually runs.
+JUSTICE env_i.return_window_expired;
+
+-- ====================================================================
+-- Properties
+-- ====================================================================
+-- Ordering convention: SPECs are numbered in file order 0..N-1 so the
+-- unity slurm script can target a specific SPEC via `-n <i>`.
+--
+--   0   Φ₁  INVARSPEC  (safety, IC3 via go_msat)
+--   1   Φ₂  INVARSPEC  (safety, IC3 via go_msat)
+--   2   Φ₃  INVARSPEC  (safety, IC3 via go_msat)
+--
+-- CTL/LTL/EF specs were dropped in favor of safety-only Φ₃ encoding.
+-- N_SPEC (slurm) = 3, all INVARSPEC.  Global property index equals file
+-- order since there are no CTL or LTL specs.
+
+-- --------------------------------------------------------------------
+-- Φ₁ Continuous Authorization.
+-- The `∨ ∃A. Compromised(A)` disjunct reduces to FALSE in the base
+-- model.
+-- --------------------------------------------------------------------
+INVARSPEC ( phi1_ok_tx0 & phi1_ok_tx1 & phi1_ok_tx2 & phi1_ok_tx3 );
+
+-- --------------------------------------------------------------------
+-- Φ₂ Zero-Sum Invariant, per-class form.
+-- --------------------------------------------------------------------
+INVARSPEC ( env_i.return_window_expired ->
+            ( g.n_credits_micro = g.n_debits_micro
+            & g.n_credits_small = g.n_debits_small
+            & g.n_credits_large = g.n_debits_large ) );
+
+-- --------------------------------------------------------------------
+-- Φ₃ Settlement Finality as a safety invariant: a counterexample is a
+-- state where the resource has been released internally while the
+-- return window is still open.  Encoded as INVARSPEC so IC3 can refute
+-- it without the JUSTICE-induced vacuity that made the prior CTL
+-- AG-AF form trivially true.
+-- --------------------------------------------------------------------
+INVARSPEC
+  ( (resource_released_tx0 -> env_i.return_window_expired)
+  & (resource_released_tx1 -> env_i.return_window_expired)
+  & (resource_released_tx2 -> env_i.return_window_expired)
+  & (resource_released_tx3 -> env_i.return_window_expired) );

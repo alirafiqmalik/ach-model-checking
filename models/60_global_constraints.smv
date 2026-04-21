@@ -1,0 +1,118 @@
+-- ====================================================================
+-- 60_global_constraints.smv — Cross-cutting DEFINE / INVAR module
+-- ====================================================================
+-- MODULE global_invariants(env, o_0, o_1, bo, a, br, r_0, r_1)
+
+-- Purpose:
+-- * Per-class settled-count DEFINEs (Φ₂).
+-- * Bound INVARs: batch-entry count ≤ 3 (per-originator tx_count ≤ 2
+-- and env.window_count ≤ 3 are enforced inside their respective
+-- owning modules, see 10_originator and 00_types_channels).
+-- * cycle_complete := env.return_window_expired (Φ₂).
+
+-- Cross-module-write note:
+-- The atomicity requirement
+-- ∀e_i . (payment_state = Submitted ∧ batch_expired) ⇒ e_i' = Batched
+-- is realized inside each transaction_slot's next(payment_state):
+-- payment_state = submitted & env.batch_expired : batched
+-- (see 10_originator.smv). Because every slot reads env.batch_expired
+-- in the same step, all qualifying slots transition together — the
+-- atomic "synchronized global transition" of .
+-- No cross-module writes are required; the `global_invariants`
+-- module is purely a monitoring / counting / cycle-level observer.
+-- ====================================================================
+
+MODULE global_invariants(env, o_0, o_1, bo, a, br, r_0, r_1)
+
+DEFINE
+  -- ------------------------------------------------------------------
+  -- Individual slot accessors (flattened global index 0..3 per
+  -- ------------------------------------------------------------------
+  tx0_state := o_0.tx_0.payment_state;
+  tx1_state := o_0.tx_1.payment_state;
+  tx2_state := o_1.tx_0.payment_state;
+  tx3_state := o_1.tx_1.payment_state;
+
+  tx0_code  := o_0.tx_0.tx_code;
+  tx1_code  := o_0.tx_1.tx_code;
+  tx2_code  := o_1.tx_0.tx_code;
+  tx3_code  := o_1.tx_1.tx_code;
+
+  tx0_amt   := o_0.tx_0.amount;
+  tx1_amt   := o_0.tx_1.amount;
+  tx2_amt   := o_1.tx_0.amount;
+  tx3_amt   := o_1.tx_1.amount;
+
+  -- ------------------------------------------------------------------
+  -- Per-class settlement counters.
+  -- Because payment_state = settled is monotonic (the only exit is
+  -- to `reversed`), we compute the counter as a DEFINE sum; this is
+  -- equivalent to the incremental-counter formulation given in
+  -- and avoids additional state. Domain 0..4 since there are 4 slots.
+  -- ------------------------------------------------------------------
+  tx0_settled := tx0_state = settled;
+  tx1_settled := tx1_state = settled;
+  tx2_settled := tx2_state = settled;
+  tx3_settled := tx3_state = settled;
+
+  n_credits_micro :=
+      (case tx0_settled & tx0_code = credit & tx0_amt = MICRO : 1; TRUE : 0; esac)
+    + (case tx1_settled & tx1_code = credit & tx1_amt = MICRO : 1; TRUE : 0; esac)
+    + (case tx2_settled & tx2_code = credit & tx2_amt = MICRO : 1; TRUE : 0; esac)
+    + (case tx3_settled & tx3_code = credit & tx3_amt = MICRO : 1; TRUE : 0; esac);
+
+  n_credits_small :=
+      (case tx0_settled & tx0_code = credit & tx0_amt = SMALL : 1; TRUE : 0; esac)
+    + (case tx1_settled & tx1_code = credit & tx1_amt = SMALL : 1; TRUE : 0; esac)
+    + (case tx2_settled & tx2_code = credit & tx2_amt = SMALL : 1; TRUE : 0; esac)
+    + (case tx3_settled & tx3_code = credit & tx3_amt = SMALL : 1; TRUE : 0; esac);
+
+  n_credits_large :=
+      (case tx0_settled & tx0_code = credit & tx0_amt = LARGE : 1; TRUE : 0; esac)
+    + (case tx1_settled & tx1_code = credit & tx1_amt = LARGE : 1; TRUE : 0; esac)
+    + (case tx2_settled & tx2_code = credit & tx2_amt = LARGE : 1; TRUE : 0; esac)
+    + (case tx3_settled & tx3_code = credit & tx3_amt = LARGE : 1; TRUE : 0; esac);
+
+  n_debits_micro :=
+      (case tx0_settled & tx0_code = debit & tx0_amt = MICRO : 1; TRUE : 0; esac)
+    + (case tx1_settled & tx1_code = debit & tx1_amt = MICRO : 1; TRUE : 0; esac)
+    + (case tx2_settled & tx2_code = debit & tx2_amt = MICRO : 1; TRUE : 0; esac)
+    + (case tx3_settled & tx3_code = debit & tx3_amt = MICRO : 1; TRUE : 0; esac);
+
+  n_debits_small :=
+      (case tx0_settled & tx0_code = debit & tx0_amt = SMALL : 1; TRUE : 0; esac)
+    + (case tx1_settled & tx1_code = debit & tx1_amt = SMALL : 1; TRUE : 0; esac)
+    + (case tx2_settled & tx2_code = debit & tx2_amt = SMALL : 1; TRUE : 0; esac)
+    + (case tx3_settled & tx3_code = debit & tx3_amt = SMALL : 1; TRUE : 0; esac);
+
+  n_debits_large :=
+      (case tx0_settled & tx0_code = debit & tx0_amt = LARGE : 1; TRUE : 0; esac)
+    + (case tx1_settled & tx1_code = debit & tx1_amt = LARGE : 1; TRUE : 0; esac)
+    + (case tx2_settled & tx2_code = debit & tx2_amt = LARGE : 1; TRUE : 0; esac)
+    + (case tx3_settled & tx3_code = debit & tx3_amt = LARGE : 1; TRUE : 0; esac);
+
+  -- ------------------------------------------------------------------
+  -- Cycle completion.
+  -- "Cycle completion is defined as env.return_window_expired
+  -- (all entries past their return window)."
+  -- ------------------------------------------------------------------
+  cycle_complete := env.return_window_expired;
+
+  -- ------------------------------------------------------------------
+  -- Count of slots currently in `submitted`. Used for the batch-entry
+  -- bound below ( "at each batch_expired rising
+  -- edge, #{i : tx_i.payment_state = submitted} <= 3").
+  -- ------------------------------------------------------------------
+  n_submitted :=
+      (case tx0_state = submitted : 1; TRUE : 0; esac)
+    + (case tx1_state = submitted : 1; TRUE : 0; esac)
+    + (case tx2_state = submitted : 1; TRUE : 0; esac)
+    + (case tx3_state = submitted : 1; TRUE : 0; esac);
+
+-- ====================================================================
+-- Bound INVARs
+-- ====================================================================
+-- Batch-entry bound: no more than 3 entries batched together.
+-- Enforced as a global invariant on the count of `submitted` slots
+-- (the set that will atomically become `batched` at batch_expired).
+INVAR n_submitted <= 3;

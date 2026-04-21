@@ -1,0 +1,157 @@
+-- ==================================================================
+-- 05_environment.smv — Global timing window controller
+-- ==================================================================
+-- MODULE environment manages the Boolean timing pairs that control
+-- batch processing, settlement, return, and reversal windows.
+
+-- Timing is modeled as Boolean variable pairs (event_started
+-- event_expired) rather than discrete clock ticks, following the
+-- approach in Section 4.3 of the paper. The environment advances
+-- nondeterministically; the model checker explores all valid
+-- orderings subject to the monotonicity and sequencing constraints.
+
+-- Window lifecycle phases (for paired variables):
+-- Phase 0: !started & !expired (idle / pre-window)
+-- Phase 1: started & !expired (window open)
+-- Phase 2: started & expired (window closed)
+
+-- Three batch processing windows are modeled per verification run
+-- (see Section 4.1: System Composition).
+-- ==================================================================
+
+MODULE environment
+
+VAR
+  batch_started           : boolean;
+  batch_expired           : boolean;
+
+  settlement_started      : boolean;
+  settlement_expired      : boolean;
+
+  -- Return deadline (2 banking days post-settlement).
+  -- The window is "open" while settlement_expired & !return_window_expired.
+  return_window_expired   : boolean;
+
+  -- Reversal deadline (5 banking days post-settlement).
+  -- The window is "open" while settlement_expired & !reversal_window_expired.
+  reversal_window_expired : boolean;
+
+  -- Completed batch cycles so far (max 3 per verification run)
+  batch_window_count      : 0..3;
+
+ASSIGN
+  init(batch_started)           := FALSE;
+  init(batch_expired)           := FALSE;
+  init(settlement_started)      := FALSE;
+  init(settlement_expired)      := FALSE;
+  init(return_window_expired)   := FALSE;
+  init(reversal_window_expired) := FALSE;
+  init(batch_window_count)      := 0;
+
+-- ===================================================================
+-- State-space invariants (current-state only)
+-- ===================================================================
+
+INVAR !(batch_expired      & !batch_started)
+INVAR !(settlement_expired & !settlement_started)
+
+-- ===================================================================
+-- TRANS constraints on (current, next) state pairs
+-- ===================================================================
+
+-- -------------------------------------------------------------------
+-- Batch window
+-- -------------------------------------------------------------------
+
+-- B1: expired implies started (next-state validity)
+TRANS next(batch_expired) -> next(batch_started)
+
+-- B2: batch_expired requires batch_started in the *current* state
+-- so the window must be open for at least one step before closing
+TRANS next(batch_expired) -> (batch_started | batch_expired)
+
+-- B3: Phase 1 monotonicity — once open, stays open until it expires
+TRANS (batch_started & !batch_expired) -> next(batch_started)
+
+-- B4: Phase 2 monotonicity — if remaining started, remain expired
+TRANS (batch_started & batch_expired & next(batch_started))
+        -> next(batch_expired)
+
+-- B5: batch_started can drop only from Phase 2 with count < 3
+TRANS (batch_started & !next(batch_started))
+        -> (batch_expired & batch_window_count < 3)
+
+-- B6: no new batch after three windows are exhausted
+TRANS (!batch_started & batch_window_count = 3) -> !next(batch_started)
+
+-- -------------------------------------------------------------------
+-- Settlement window
+-- -------------------------------------------------------------------
+
+-- S1: expired implies started (next-state validity)
+TRANS next(settlement_expired) -> next(settlement_started)
+
+-- S2: settlement begins only after batch has expired
+TRANS next(settlement_started) -> (batch_expired | settlement_started)
+
+-- S3: settlement_expired requires settlement_started in current state
+TRANS next(settlement_expired) -> (settlement_started | settlement_expired)
+
+-- S4: Phase 1 monotonicity — once started, stays started
+TRANS (settlement_started & !settlement_expired) -> next(settlement_started)
+
+-- S5: settlement_started drops only during a batch reset
+TRANS (settlement_started & !next(settlement_started))
+        -> (batch_started & batch_expired & !next(batch_started))
+
+-- S6: settlement_expired drops only during a batch reset
+TRANS (settlement_expired & !next(settlement_expired))
+        -> (batch_started & batch_expired & !next(batch_started))
+
+-- -------------------------------------------------------------------
+-- Return window (2 banking days post-settlement)
+-- -------------------------------------------------------------------
+
+-- RW1: can expire only after settlement has expired, or already expired
+TRANS next(return_window_expired)
+        -> (settlement_expired | return_window_expired)
+
+-- RW2: once expired, stays expired until batch reset
+TRANS (return_window_expired & !next(return_window_expired))
+        -> (batch_started & batch_expired & !next(batch_started))
+
+-- -------------------------------------------------------------------
+-- Reversal window (5 banking days post-settlement)
+-- -------------------------------------------------------------------
+
+-- RV1: can expire only after settlement has expired, or already expired
+TRANS next(reversal_window_expired)
+        -> (settlement_expired | reversal_window_expired)
+
+-- RV2: once expired, stays expired until batch reset
+TRANS (reversal_window_expired & !next(reversal_window_expired))
+        -> (batch_started & batch_expired & !next(batch_started))
+
+-- RV3: reversal window (5 days) expires no earlier than return (2 days)
+TRANS next(reversal_window_expired)
+        -> (return_window_expired | next(return_window_expired))
+
+-- -------------------------------------------------------------------
+-- Reset cascading — batch reset clears all downstream windows
+-- -------------------------------------------------------------------
+
+TRANS (batch_started & batch_expired & !next(batch_started))
+        -> (!next(settlement_started) & !next(settlement_expired) &
+            !next(return_window_expired) & !next(reversal_window_expired))
+
+-- -------------------------------------------------------------------
+-- Batch window counter
+-- -------------------------------------------------------------------
+
+-- Increment by 1 on each batch reset
+TRANS (batch_started & batch_expired & !next(batch_started))
+        -> next(batch_window_count) = batch_window_count + 1
+
+-- Unchanged when not resetting
+TRANS !(batch_started & batch_expired & !next(batch_started))
+        -> next(batch_window_count) = batch_window_count

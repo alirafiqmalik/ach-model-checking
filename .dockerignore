@@ -1,0 +1,7 @@
+.git
+**/.DS_Store
+artifacts
+logs
+docker-out
+*.log
+_main_model.smv

@@ -1,0 +1,981 @@
+-- ==========================================================================
+-- 10_originator.smv — Originator FSM and passive transaction_slot sub-module
+-- ==========================================================================
+
+-- Protocol context: linkExternalAccount / verifyAccount, batch flow
+-- through DFIs and the Operator under Nacha rules.
+
+-- This file declares TWO modules in this exact order:
+-- MODULE transaction_slot(...) (passive observer, declared first)
+-- MODULE originator(...) (owns two tx slots, the active FSM)
+-- All enum tokens shared across files (payment states, return codes
+-- addresses, message types, amounts, etc.) are assumed to be introduced
+-- consistently in 00_types_channels.smv via the c_info_channel /
+-- c_dollar_channel / env module declarations. nuXmv 2.1.0 enums are
+-- globally scoped, so identical token names unify across modules.
+
+-- --------------------------------------------------------------------------
+-- PASSIVE-SLOT IDIOM (transaction ownership)
+-- nuXmv cannot have one module write another module's VARs.
+-- --------------------------------------------------------------------------
+-- nuXmv forbids cross-module VAR writes. Each transaction_slot therefore
+-- computes its OWN next(...) expressions, reading three kinds of inputs:
+
+-- (a) the shared channel c_info — delivered
+-- messages addressed to/from this slot's global id drive the lifecycle
+-- transitions (ODFI rejection, Operator approval/rejection, RDFI
+-- settle/return)
+-- (b) the environment module env — batch_expired
+-- triggers the atomic submitted -> batched transition, return_window_*
+-- gates the settled -> reversed transition
+-- (c) explicit "helper-signal" booleans passed in by the owning
+-- originator — these are DEFINEs exported by the originator that
+-- tell a given slot "you are being initiated this step" or
+-- "you are the target of a reversal this step". The originator
+-- computes them as pure functions of its own fsm_state, so no
+-- cross-module writes occur.
+
+-- The helper-signal set is kept minimal so the slot is near-stateless
+-- in its drive logic:
+-- submit_now : bool — not_submitted -> submitted trigger
+-- submit_is_reversal : bool — that submission is a REVERSAL entry
+-- reverses_target_tx : 0..4 — the global id being reversed (4=NONE)
+-- mark_reversed_now : bool — another slot's reversal entry
+-- targets THIS slot this step
+
+-- The transaction_slot signature is extended with helper inputs
+-- (submit_now, submit_is_reversal, reverses_target_tx,
+-- mark_reversed_now, auth_valid_for_receiver).  Any signature change
+-- must be reflected in 99_main.smv and in each originator instantiation.
+
+-- Extended signature:
+-- MODULE transaction_slot(owner_oid, local_id
+-- c_info, env
+-- submit_now, submit_is_reversal
+-- reverses_target_tx, mark_reversed_now
+-- auth_valid_for_receiver)
+
+-- `auth_valid_for_receiver` is a Boolean input driven by the owning
+-- originator as a DEFINE that evaluates to TRUE iff the Receiver
+-- currently named by this slot's `receiver_id` has a live
+-- authorization (authorized_by_r{i} & !auth_revoked_r{i}). The slot
+-- uses it to latch the Φ₁ ordering facts via Booleans instead of prior
+-- integer step-snapshot timestamps, avoiding a discrete global clock
+-- that would explode the state space.
+
+-- Reversal modeling:
+-- A reversal is itself a compensating transaction. When the originator
+-- issues one, it consumes a fresh local slot (so its slot-local tx_count
+-- increments), the fresh slot has is_reversal := TRUE and reverses_tx
+-- pointing to the original slot's GLOBAL id, and the original slot
+-- observes mark_reversed_now and transitions settled -> reversed.
+-- ==========================================================================
+
+
+-- ==========================================================================
+-- MODULE transaction_slot
+-- ==========================================================================
+MODULE transaction_slot(owner_oid, local_id,
+                        c_info, env,
+                        submit_now, submit_is_reversal,
+                        reverses_target_tx, mark_reversed_now,
+                        auth_valid_for_receiver)
+
+VAR
+  ----------------------------------------------------------------------
+  -- Payment lifecycle
+  ----------------------------------------------------------------------
+  payment_state : {not_submitted, submitted, batched, pending_settlement,
+                   settled, rejected, returned, reversed};
+
+  ----------------------------------------------------------------------
+  -- Static identity
+  ----------------------------------------------------------------------
+  originator_id : 0..1;                        -- equals owner_oid (INVAR)
+  receiver_id   : 0..1;                        -- A-3/A-4 nondet
+
+  ----------------------------------------------------------------------
+  -- Adversarial-nondet payment parameters
+  -- "Originators may select payment initiation parameters
+  -- nondeterministically: payment type, account type, ... amount."
+  ----------------------------------------------------------------------
+  tx_code           : {debit, credit};
+  orig_account_type : {checking, savings};
+  recv_account_type : {checking, savings, credit_card};
+  amount            : {MICRO, SMALL, LARGE};
+  -- sec_code: WEB only in scope. A second
+  -- placeholder value `PPD_placeholder` is included solely so the
+  -- domain is not a singleton enum (which NuSMV 2.7 folds to a
+  -- constant and then rejects `init` assignments for). The model
+  -- always initializes and keeps sec_code = WEB.
+  sec_code          : {WEB, PPD_placeholder};
+  auth_method       : {manual_link, web_login, micro_deposit, none_auth};
+
+  ----------------------------------------------------------------------
+  -- Return code latch
+  -- Set when the slot transitions into a rejection/return state with the
+  -- payload_return_code carried by the delivering c_info message.
+  ----------------------------------------------------------------------
+  return_code : {R01, R02, R03, R04, R07, R08, R10, R16, R19, R29, R36, none_rc};
+
+  ----------------------------------------------------------------------
+  -- Reversal accounting
+  ----------------------------------------------------------------------
+  is_reversal : boolean;
+  reverses_tx : 0..4;                          -- 4 = NONE (domain 0..3 are valid refs)
+
+  ----------------------------------------------------------------------
+  -- Boolean ordering latches for Φ₁ Continuous Authorization.
+  -- These replace prior integer step snapshots; semantics:
+  --   submitted_while_authorized: TRUE at submit_now iff
+  --     auth_valid_for_receiver held (authorization before submit).
+  --   revoked_during_pipeline: TRUE if authorization drops while the
+  --     slot is still in {submitted, batched, pending_settlement}.
+  ----------------------------------------------------------------------
+  submitted_while_authorized : boolean;
+  revoked_during_pipeline    : boolean;
+
+
+DEFINE
+  ------------------------------------------------------------------
+  -- Global flattened slot id (originator_id * 2 + local_id).
+  ------------------------------------------------------------------
+  tx_global_id := owner_oid * 2 + local_id;
+
+  ------------------------------------------------------------------
+  -- Shared-channel receipt predicates (c_info.occupied means readable).
+  ------------------------------------------------------------------
+
+  -- ODFI validation failure returned to Originator
+  return_notice_from_bo :=
+        c_info.occupied
+      & c_info.sender   = bo
+      & c_info.msg_type = RETURN_NOTICE
+      & c_info.payload_tx_id = tx_global_id;
+
+  -- ACH Operator forwards approved batch toward RDFI (Batched ->
+  -- Pending_Settlement path).
+  op_forward_for_me :=
+        c_info.occupied
+      & c_info.sender   = a
+      & c_info.msg_type = SETTLEMENT_REQ
+      & c_info.payload_tx_id = tx_global_id;
+
+  -- ACH Operator data-rejection (U3 batch-processing variants).
+  op_reject_for_me :=
+        c_info.occupied
+      & c_info.sender   = a
+      & c_info.msg_type = RETURN_NOTICE
+      & c_info.payload_tx_id = tx_global_id;
+
+  -- RDFI outcomes (nondeterministic settlement / return / other).
+  rdfi_settle_for_me :=
+        c_info.occupied
+      & c_info.sender   = br
+      & c_info.msg_type = SETTLEMENT_ACK
+      & c_info.payload_tx_id = tx_global_id;
+
+  rdfi_return_for_me :=
+        c_info.occupied
+      & c_info.sender   = br
+      & c_info.msg_type = RETURN_NOTICE
+      & c_info.payload_tx_id = tx_global_id;
+
+  -- Reversal window open (multi-day window after settlement), encoded
+  -- with env return_window_* Boolean pairs.
+  reversal_window_open :=
+        env.return_window_started
+      & !env.return_window_expired;
+
+
+ASSIGN
+  ------------------------------------------------------------------
+  -- Initial values
+  ------------------------------------------------------------------
+  init(payment_state)     := not_submitted;
+  init(originator_id)     := owner_oid;
+  init(receiver_id)       := 0;
+  init(tx_code)           := credit;
+  init(orig_account_type) := checking;
+  init(recv_account_type) := checking;
+  init(amount)            := SMALL;
+  init(sec_code)          := WEB;
+  init(auth_method)       := none_auth;
+  init(return_code)       := none_rc;
+  init(is_reversal)       := FALSE;
+  init(reverses_tx)       := 4;                -- NONE
+  init(submitted_while_authorized) := FALSE;
+  init(revoked_during_pipeline)    := FALSE;
+
+  ------------------------------------------------------------------
+  -- payment_state transition relation (collection, operator, RDFI).
+  ------------------------------------------------------------------
+  next(payment_state) := case
+    -- not_submitted -> submitted when the owner raises submit_now.
+    payment_state = not_submitted & submit_now : submitted;
+
+    -- submitted -> rejected on ODFI validation failure.
+    payment_state = submitted & return_notice_from_bo : rejected;
+
+    -- submitted -> batched on batch window closure.
+    payment_state = submitted & env.batch_expired : batched;
+
+    -- batched -> pending_settlement on Operator acceptance.
+    payment_state = batched & op_forward_for_me : pending_settlement;
+
+    -- batched -> rejected on Operator data-rejection (U3 variants).
+    payment_state = batched & op_reject_for_me : rejected;
+
+    -- pending_settlement -> settled | returned (nondet RDFI outcome
+    -- the slot stays in pending_settlement (default branch below).
+    payment_state = pending_settlement & rdfi_settle_for_me : settled;
+    payment_state = pending_settlement & rdfi_return_for_me : returned;
+
+    -- settled -> reversed when a compensating entry targets this slot
+    -- within the reversal window.  mark_reversed_now is raised by the
+    -- originator when it submits a fresh slot with is_reversal=TRUE
+    -- referencing this tx_global_id.
+    payment_state = settled
+      & mark_reversed_now
+      & reversal_window_open                    : reversed;
+
+    TRUE : payment_state;
+  esac;
+
+  ------------------------------------------------------------------
+  -- originator_id frozen at init
+  ------------------------------------------------------------------
+  next(originator_id) := originator_id;
+
+  ------------------------------------------------------------------
+  -- Adversarial nondet latches on submit. Values are picked by the
+  -- model checker from the full finite domain (A-3/A-4) and
+  -- then frozen for the lifetime of the slot.
+  ------------------------------------------------------------------
+  next(receiver_id) := case
+    payment_state = not_submitted & submit_now : {0, 1};
+    TRUE                                       : receiver_id;
+  esac;
+
+  next(tx_code) := case
+    payment_state = not_submitted & submit_now : {debit, credit};
+    TRUE                                       : tx_code;
+  esac;
+
+  next(orig_account_type) := case
+    payment_state = not_submitted & submit_now : {checking, savings};
+    TRUE                                       : orig_account_type;
+  esac;
+
+  next(recv_account_type) := case
+    payment_state = not_submitted & submit_now : {checking, savings, credit_card};
+    TRUE                                       : recv_account_type;
+  esac;
+
+  next(amount) := case
+    payment_state = not_submitted & submit_now : {MICRO, SMALL, LARGE};
+    TRUE                                       : amount;
+  esac;
+
+  -- sec_code: WEB only in scope; hold constant.
+  next(sec_code) := sec_code;
+
+  -- auth_method latched from the originator's linking record at the
+  -- moment this slot is initiated. Since the slot cannot read the
+  -- originator's arrays without cross-module writes, and the domain is
+  -- finite, we pick it nondeterministically at submit; the separate
+  -- originator-side auth_method_used_r* arrays  are the primary
+  -- record used by Φ₁.
+  next(auth_method) := case
+    payment_state = not_submitted & submit_now : {manual_link, web_login, micro_deposit};
+    TRUE                                       : auth_method;
+  esac;
+
+  ------------------------------------------------------------------
+  -- return_code latch: mirrors payload_return_code of the delivering
+  -- RETURN_NOTICE message.
+  ------------------------------------------------------------------
+  next(return_code) := case
+    payment_state = submitted         & return_notice_from_bo
+        : c_info.payload_return_code;
+    payment_state = batched           & op_reject_for_me
+        : c_info.payload_return_code;
+    payment_state = pending_settlement & rdfi_return_for_me
+        : c_info.payload_return_code;
+    TRUE : return_code;
+  esac;
+
+  ------------------------------------------------------------------
+  -- Reversal flags
+  ------------------------------------------------------------------
+  next(is_reversal) := case
+    payment_state = not_submitted & submit_now & submit_is_reversal : TRUE;
+    TRUE                                                            : is_reversal;
+  esac;
+
+  next(reverses_tx) := case
+    payment_state = not_submitted & submit_now & submit_is_reversal
+        : reverses_target_tx;
+    TRUE : reverses_tx;
+  esac;
+
+  ------------------------------------------------------------------
+  -- Boolean Φ₁ ordering latches .
+  ------------------------------------------------------------------
+  -- Latched exactly at submit_now. Encodes "t_auth < t_init" because
+  -- `auth_valid_for_receiver` is the live conjunction
+  -- `authorized_by_r{j} & !auth_revoked_r{j}` computed by the owning
+  -- originator — therefore TRUE at submit_now iff authorization was
+  -- granted (and not yet revoked) at that step, i.e., t_auth < t_init.
+  next(submitted_while_authorized) := case
+    payment_state = not_submitted & submit_now : auth_valid_for_receiver;
+    TRUE                                       : submitted_while_authorized;
+  esac;
+
+  -- Latched TRUE on any step during the slot's in-pipeline phases at
+  -- which the authorization goes away. Encodes the Φ₁ clause
+  -- `∃ t : t_init ≤ t < t_settle ∧ AccessRevoked(r) @ t`. The latch
+  -- is sticky (monotonic) so Φ₁ can be checked as a pure safety
+  -- invariant against `payment_state = settled`.
+  next(revoked_during_pipeline) := case
+    (payment_state = submitted
+      | payment_state = batched
+      | payment_state = pending_settlement)
+      & !auth_valid_for_receiver              : TRUE;
+    TRUE                                      : revoked_during_pipeline;
+  esac;
+
+
+------------------------------------------------------------------
+-- Identity invariants
+------------------------------------------------------------------
+INVAR originator_id = owner_oid;
+
+
+
+-- ==========================================================================
+-- MODULE originator
+-- ==========================================================================
+-- Signature (exact):
+--   MODULE originator(id, c_info, c_dollar, env,
+--                     auth_grants_from_r0, auth_grants_from_r1)
+--
+-- c_info / c_dollar: expose channel fields as VARs or DEFINEs readable
+-- as c_info.occupied, c_info.sender, c_info.receiver, c_info.msg_type,
+-- c_info.payload_tx_id, c_info.payload_return_code,
+-- c_info.payload_auth_method (and analogous c_dollar fields).
+--
+-- env: batch_*, settlement_*, return_window_*, transfer_*, window_count
+-- Boolean phase signals from 00_types_channels.smv.
+--
+-- auth_grants_from_r0 / auth_grants_from_r1: each receiver instance must
+-- expose DEFINEs grant_to_o*, revoke_to_o*, grant_method_to_o* so this
+-- originator reads per-step GRANT_AUTH / REVOKE_AUTH effects without
+-- cross-module writes.  They must match the receiver's c_info_req_* for
+-- the same step (arbitration may delay visibility by a step).
+--
+-- This originator exposes flat DEFINEs c_info_req_* and c_dollar_req_*
+-- for wiring into c_info_channel / c_dollar_channel (see
+-- 00_types_channels.smv).
+-- ==========================================================================
+MODULE originator(id, c_info, c_dollar, env,
+                  auth_grants_from_r0, auth_grants_from_r1)
+
+IVAR
+  ------------------------------------------------------------------
+  -- Per-step nondeterministic linking choice (A-1).  idle_choice means
+  -- "do not initiate linking this step".
+  ------------------------------------------------------------------
+  link_choice : {idle_choice,
+                 to_r0_manual, to_r0_web, to_r0_micro,
+                 to_r1_manual, to_r1_web, to_r1_micro};
+
+  ------------------------------------------------------------------
+  -- Per-step pulse controlling whether the Originator actually
+  -- posts its outgoing LINK_REQ on c_info while in a linking_*
+  -- state.
+  -- emission as "at any allowable step"; pulsing it as an IVAR
+  -- admits silent steps during which the single-slot c_info bus is
+  -- free for the BO to land its LINK_ACK reply (without this, the
+  -- channel's lex arbiter — o_0 > o_1 > bo — squashes every ack).
+  ------------------------------------------------------------------
+  link_req_pulse : boolean;
+
+
+VAR
+  ------------------------------------------------------------------
+  -- Two bounded local transaction slots (at most two live entries per
+  -- Originator).  Helper signals are passed positionally; see the
+  -- passive-slot idiom header at the top of this file.
+  ------------------------------------------------------------------
+  tx_0 : transaction_slot(id, 0, c_info, env,
+                          tx_0_submit_now, tx_0_is_reversal,
+                          tx_0_reverses_target, tx_0_mark_reversed,
+                          tx_0_auth_valid);
+  tx_1 : transaction_slot(id, 1, c_info, env,
+                          tx_1_submit_now, tx_1_is_reversal,
+                          tx_1_reverses_target, tx_1_mark_reversed,
+                          tx_1_auth_valid);
+
+  ------------------------------------------------------------------
+  -- Submission counter.
+  ------------------------------------------------------------------
+  tx_count : 0..2;
+
+  ------------------------------------------------------------------
+  -- Originator FSM state (protocol phases, not attack-specific).
+  --   idle — initial / between activities
+  --   linking_manual / linking_web / linking_micro — link subprotocols
+  --   awaiting_md_confirm — micro-deposit credits issued, await VERIFY_ACK
+  --   linked_ok / link_failed — link outcome
+  --   verifying_tps_account / verified_tps — Third-Party Sender verify path
+  --   initiating_payment — nondet parameter pick (A-3/A-4) then submit
+  --   payment_submitted — PAYMENT_INIT sent; await pipeline ack
+  --   reversing — post-settlement compensating entry
+  --   ack_received — BATCH_ACK from ODFI consumed
+  ------------------------------------------------------------------
+  fsm_state : {idle,
+               linking_manual, linking_web, linking_micro,
+               awaiting_md_confirm,
+               linked_ok,
+               link_failed,
+               verifying_tps_account, verified_tps,
+               initiating_payment, payment_submitted,
+               reversing, ack_received};
+
+  ------------------------------------------------------------------
+  -- Per-receiver authorization record.
+  ------------------------------------------------------------------
+  authorized_by_r0 : boolean;
+  authorized_by_r1 : boolean;
+  auth_revoked_r0  : boolean;
+  auth_revoked_r1  : boolean;
+  auth_method_used_r0 : {manual_link, web_login, micro_deposit, none_auth};
+  auth_method_used_r1 : {manual_link, web_login, micro_deposit, none_auth};
+
+  ------------------------------------------------------------------
+  -- Micro-deposit sub-protocol state machine.
+  ------------------------------------------------------------------
+  md_state        : {md_none, md_sent_1, md_sent_2, md_awaiting_confirm,
+                     md_confirmed, md_failed};
+  md_reinit_count : 0..3;
+
+  ------------------------------------------------------------------
+  -- Active-linking scratch state
+  ------------------------------------------------------------------
+  link_target_r : 0..1;
+  link_method   : {manual_link, web_login, micro_deposit, none_auth};
+
+  ------------------------------------------------------------------
+  -- Slot allocation pointer for the next payment / reversal submission
+  ------------------------------------------------------------------
+  next_slot_id : 0..1;
+
+  ------------------------------------------------------------------
+  -- Which local slot is currently targeted for reversal
+  ------------------------------------------------------------------
+  reversing_target_local : 0..1;
+
+
+DEFINE
+  ------------------------------------------------------------------
+  -- Own address symbol (enum values declared globally via
+  -- c_info_channel in 00_types_channels.smv).
+  ------------------------------------------------------------------
+  own_addr := case
+    id = 0 : o_0;
+    TRUE   : o_1;
+  esac;
+
+  ------------------------------------------------------------------
+  -- Channel-receipt DEFINEs.
+  ------------------------------------------------------------------
+  link_ack_from_bo :=
+        c_info.occupied
+      & c_info.sender   = bo
+      & c_info.receiver = own_addr
+      & c_info.msg_type = LINK_ACK;
+
+  verify_ack_now :=
+        c_info.occupied
+      & (c_info.sender = r_0 | c_info.sender = r_1)
+      & c_info.receiver = own_addr
+      & c_info.msg_type = VERIFY_ACK;
+
+  batch_ack_for_me :=
+        c_info.occupied
+      & c_info.sender   = bo
+      & c_info.receiver = own_addr
+      & c_info.msg_type = BATCH_ACK;
+
+  ------------------------------------------------------------------
+  -- Receiver-driven authorization signals (
+  -- interface requirement documented in module header).
+  ------------------------------------------------------------------
+  grant_from_r0_now :=
+        (id = 0 & auth_grants_from_r0.grant_to_o0)
+      | (id = 1 & auth_grants_from_r0.grant_to_o1);
+  grant_from_r1_now :=
+        (id = 0 & auth_grants_from_r1.grant_to_o0)
+      | (id = 1 & auth_grants_from_r1.grant_to_o1);
+  revoke_from_r0_now :=
+        (id = 0 & auth_grants_from_r0.revoke_to_o0)
+      | (id = 1 & auth_grants_from_r0.revoke_to_o1);
+  revoke_from_r1_now :=
+        (id = 0 & auth_grants_from_r1.revoke_to_o0)
+      | (id = 1 & auth_grants_from_r1.revoke_to_o1);
+  grant_method_from_r0 := case
+    id = 0 : auth_grants_from_r0.grant_method_to_o0;
+    TRUE   : auth_grants_from_r0.grant_method_to_o1;
+  esac;
+  grant_method_from_r1 := case
+    id = 0 : auth_grants_from_r1.grant_method_to_o0;
+    TRUE   : auth_grants_from_r1.grant_method_to_o1;
+  esac;
+
+  ------------------------------------------------------------------
+  -- Helper signals to the transaction slots
+  -- (see passive-slot idiom header).
+  ------------------------------------------------------------------
+
+  -- A slot is submitted this step when we are either initiating a
+  -- fresh payment OR submitting a reversal entry, and next_slot_id
+  -- points at that local slot.
+  tx_0_submit_now :=
+        (fsm_state = initiating_payment & next_slot_id = 0)
+      | (fsm_state = reversing          & next_slot_id = 0);
+  tx_1_submit_now :=
+        (fsm_state = initiating_payment & next_slot_id = 1)
+      | (fsm_state = reversing          & next_slot_id = 1);
+
+  -- Is the submitted slot a reversal compensating entry?
+  tx_0_is_reversal := fsm_state = reversing & next_slot_id = 0;
+  tx_1_is_reversal := fsm_state = reversing & next_slot_id = 1;
+
+  -- Which GLOBAL tx id does the new reversal slot reference?
+  -- (4 = NONE when not issuing a reversal).
+  tx_0_reverses_target := case
+    fsm_state = reversing & next_slot_id = 0 : id * 2 + reversing_target_local;
+    TRUE                                     : 4;
+  esac;
+  tx_1_reverses_target := case
+    fsm_state = reversing & next_slot_id = 1 : id * 2 + reversing_target_local;
+    TRUE                                     : 4;
+  esac;
+
+  -- The "other" slot (the one NOT carrying the reversal entry) is the
+  -- one whose original payment is being reversed. When we submit
+  -- slot 1 as a reversal targeting local 0, slot 0 sees mark_reversed_now.
+  tx_0_mark_reversed :=
+        fsm_state = reversing
+      & reversing_target_local = 0
+      & next_slot_id = 1;
+  tx_1_mark_reversed :=
+        fsm_state = reversing
+      & reversing_target_local = 1
+      & next_slot_id = 0;
+
+  -- ------------------------------------------------------------------
+  -- Φ₁ Boolean-ordering helper.
+  -- Per-slot "live authorization" signal passed to each
+  -- transaction_slot. The slot uses it to latch
+  -- `submitted_while_authorized` at submit_now and
+  -- `revoked_during_pipeline` whenever it goes FALSE while the slot
+  -- is in a pipeline state. This replaces the prior integer
+  -- `t_auth_step_r*`/`t_revoke_step_r*` snapshots entirely.
+
+  -- The slot records its latched receiver_id at submit time; we read
+  -- it back here to compute which receiver's authorization line is
+  -- relevant. Before submit, the slot's receiver_id has its init
+  -- value (0), and `auth_valid_for_receiver` merely influences the
+  -- latch at the moment submit_now fires, so the pre-submit value is
+  -- immaterial.
+  -- ------------------------------------------------------------------
+  tx_0_auth_valid := case
+    tx_0.receiver_id = 0 : authorized_by_r0 & !auth_revoked_r0;
+    TRUE                 : authorized_by_r1 & !auth_revoked_r1;
+  esac;
+  tx_1_auth_valid := case
+    tx_1.receiver_id = 0 : authorized_by_r0 & !auth_revoked_r0;
+    TRUE                 : authorized_by_r1 & !auth_revoked_r1;
+  esac;
+
+  ------------------------------------------------------------------
+  -- Authorization phase predicates (linking must precede debit
+  -- initiation).
+  ------------------------------------------------------------------
+  any_receiver_authorized :=
+        (authorized_by_r0 & !auth_revoked_r0)
+      | (authorized_by_r1 & !auth_revoked_r1);
+
+  payment_to_r0_pending :=
+        (tx_0.payment_state in {submitted, batched, pending_settlement}
+         & tx_0.receiver_id = 0)
+      | (tx_1.payment_state in {submitted, batched, pending_settlement}
+         & tx_1.receiver_id = 0);
+  payment_to_r1_pending :=
+        (tx_0.payment_state in {submitted, batched, pending_settlement}
+         & tx_0.receiver_id = 1)
+      | (tx_1.payment_state in {submitted, batched, pending_settlement}
+         & tx_1.receiver_id = 1);
+
+  ------------------------------------------------------------------
+  -- Outgoing c_info_req DEFINEs.
+  -- Populated from fsm_state. c_info_channel arbitrates across all
+  -- participants and writes the winning request onto the
+  -- shared channel. If we are not granted this step, we keep
+  -- c_info_req_valid = TRUE next step (resend).
+  ------------------------------------------------------------------
+  c_info_req_valid :=
+        (fsm_state = linking_manual & link_req_pulse)
+      | (fsm_state = linking_web    & link_req_pulse)
+      | (fsm_state = linking_micro  & link_req_pulse)
+      | fsm_state = initiating_payment
+      | fsm_state = reversing
+      | fsm_state = verifying_tps_account;
+
+  c_info_req_sender := own_addr;
+
+  c_info_req_receiver := case
+    fsm_state = linking_manual        : bo;
+    fsm_state = linking_web           : bo;
+    fsm_state = linking_micro         : bo;
+    fsm_state = verifying_tps_account : bo;
+    fsm_state = initiating_payment    : bo;
+    fsm_state = reversing             : bo;
+    TRUE                              : none_addr;
+  esac;
+
+  c_info_req_msg_type := case
+    fsm_state = linking_manual        : LINK_REQ;
+    fsm_state = linking_web           : LINK_REQ;
+    fsm_state = linking_micro         : LINK_REQ;
+    fsm_state = verifying_tps_account : VERIFY_REQ;
+    fsm_state = initiating_payment    : PAYMENT_INIT;
+    fsm_state = reversing             : REVERSAL_NOTICE;
+    TRUE                              : none_msg;
+  esac;
+
+  c_info_req_payload_tx_id := case
+    fsm_state = initiating_payment    : id * 2 + next_slot_id;
+    fsm_state = reversing             : id * 2 + reversing_target_local;
+    TRUE                              : 0;
+  esac;
+
+  c_info_req_payload_return_code := none_rc;
+
+  c_info_req_payload_auth_method := case
+    fsm_state = linking_manual : manual_link;
+    fsm_state = linking_web    : web_login;
+    fsm_state = linking_micro  : micro_deposit;
+    TRUE                       : none_auth;
+  esac;
+
+  ------------------------------------------------------------------
+  -- Outgoing c_dollar_req DEFINEs.
+  -- The dollar channel carries FUND_DEBIT / FUND_CREDIT / FUND_REVERSE.
+  -- The two MICRO credits issued during micro-deposit verification are
+  -- emitted while md_state = md_sent_1 or md_sent_2.
+  ------------------------------------------------------------------
+  c_dollar_req_valid :=
+        (fsm_state = linking_micro
+         & (md_state = md_sent_1 | md_state = md_sent_2));
+
+  c_dollar_req_sender := own_addr;
+
+  c_dollar_req_receiver := case
+    id = 0 & link_target_r = 0 : r_0;
+    id = 0 & link_target_r = 1 : r_1;
+    id = 1 & link_target_r = 0 : r_0;
+    TRUE                       : r_1;
+  esac;
+
+  c_dollar_req_msg_type := case
+    c_dollar_req_valid : FUND_CREDIT;
+    TRUE               : none_msg;
+  esac;
+
+  c_dollar_req_payload_tx_id := 0;
+
+  c_dollar_req_amount := case
+    c_dollar_req_valid : MICRO;
+    TRUE               : none_amt;
+  esac;
+
+
+ASSIGN
+  ------------------------------------------------------------------
+  -- Initial values
+  ------------------------------------------------------------------
+  init(fsm_state)              := idle;
+  init(tx_count)               := 0;
+  init(authorized_by_r0)       := FALSE;
+  init(authorized_by_r1)       := FALSE;
+  init(auth_revoked_r0)        := FALSE;
+  init(auth_revoked_r1)        := FALSE;
+  init(auth_method_used_r0)    := none_auth;
+  init(auth_method_used_r1)    := none_auth;
+  init(md_state)               := md_none;
+  init(md_reinit_count)        := 0;
+  init(link_target_r)          := 0;
+  init(link_method)            := none_auth;
+  init(next_slot_id)           := 0;
+  init(reversing_target_local) := 0;
+
+  ------------------------------------------------------------------
+  -- fsm_state transitions.
+  ------------------------------------------------------------------
+  next(fsm_state) := case
+    ------------------------------------------------------------------
+    -- Linking onset (idle -> linking_*): adversarial A-1 free choice
+    -- over receiver target and auth method.
+    ------------------------------------------------------------------
+    fsm_state = idle & link_choice = to_r0_manual : linking_manual;
+    fsm_state = idle & link_choice = to_r0_web    : linking_web;
+    fsm_state = idle & link_choice = to_r0_micro  : linking_micro;
+    fsm_state = idle & link_choice = to_r1_manual : linking_manual;
+    fsm_state = idle & link_choice = to_r1_web    : linking_web;
+    fsm_state = idle & link_choice = to_r1_micro  : linking_micro;
+
+    ------------------------------------------------------------------
+    -- manual_link and web_login: LINK_REQ has been sent (via
+    -- c_info_req above). On LINK_ACK from ODFI the link is established.
+    ------------------------------------------------------------------
+    fsm_state = linking_manual & link_ack_from_bo : linked_ok;
+    fsm_state = linking_web    & link_ack_from_bo : linked_ok;
+
+    ------------------------------------------------------------------
+    -- micro-deposit: after ODFI ack we enter the credit-issuing
+    -- sub-FSM driven by md_state. Two MICRO credits are emitted on
+    -- c_dollar (see c_dollar_req_* DEFINEs), then we await the
+    -- Receiver's VERIFY_ACK reporting the credited amounts.
+    ------------------------------------------------------------------
+    fsm_state = linking_micro & link_ack_from_bo : awaiting_md_confirm;
+    fsm_state = awaiting_md_confirm
+      & verify_ack_now
+      & md_state = md_confirmed                  : linked_ok;
+    fsm_state = awaiting_md_confirm
+      & md_state = md_failed
+      & md_reinit_count < 3                      : linking_micro;
+    fsm_state = awaiting_md_confirm
+      & md_state = md_failed                     : link_failed;
+
+    ------------------------------------------------------------------
+    -- verifyAccount for Third-Party Senders: TPS instances must complete micro-deposit
+    -- verification before debiting. Modeled as an admissible branch
+    -- that any linked originator may take. Here treated as a
+    -- re-entrant extension of the link phase (non-mandatory).
+    ------------------------------------------------------------------
+    fsm_state = linked_ok & verify_ack_now       : verified_tps;
+    fsm_state = verifying_tps_account
+      & verify_ack_now                           : verified_tps;
+    fsm_state = verified_tps                     : linked_ok;
+
+    ------------------------------------------------------------------
+    -- Gate from linked_ok to initiating_payment.
+    -- Phase constraint: linking
+    -- must precede debit initiation AND the target receiver must
+    -- currently authorize this originator.
+    -- Otherwise loop back to idle for another linking attempt or
+    -- idle waiting.
+    ------------------------------------------------------------------
+    fsm_state = linked_ok
+      & tx_count < 2
+      & any_receiver_authorized                  : {linked_ok, initiating_payment};
+    fsm_state = linked_ok                        : {idle, linked_ok};
+
+    ------------------------------------------------------------------
+    -- initiating_payment: the slot latches nondet parameters
+    -- (A-3/A-4). One-step advance to payment_submitted; the
+    -- c_info_req sends PAYMENT_INIT this step.
+    ------------------------------------------------------------------
+    fsm_state = initiating_payment               : payment_submitted;
+
+    ------------------------------------------------------------------
+    -- payment_submitted: wait for BATCH_ACK from ODFI once the batch
+    -- is submitted upstream.
+    ------------------------------------------------------------------
+    fsm_state = payment_submitted & batch_ack_for_me : ack_received;
+
+    ------------------------------------------------------------------
+    -- ack_received: after an own payment has reached settled the
+    -- originator MAY nondeterministically issue a reversal, provided
+    -- (i) the reversal window is open (env.return_window_started
+    --     & !env.return_window_expired) and
+    -- (ii) a free local slot remains (tx_count < 2). Otherwise
+    -- loop back to idle.
+    ------------------------------------------------------------------
+    fsm_state = ack_received
+      & (tx_0.payment_state = settled | tx_1.payment_state = settled)
+      & env.return_window_started
+      & !env.return_window_expired
+      & tx_count < 2                              : {idle, reversing};
+    fsm_state = ack_received                      : idle;
+
+    ------------------------------------------------------------------
+    -- reversing: one-step submit the compensating entry, then wait.
+    ------------------------------------------------------------------
+    fsm_state = reversing                         : payment_submitted;
+
+    ------------------------------------------------------------------
+    -- link_failed: return to idle; a future A-1 link_choice may
+    -- retry.
+    ------------------------------------------------------------------
+    fsm_state = link_failed                       : idle;
+
+    TRUE                                          : fsm_state;
+  esac;
+
+  ------------------------------------------------------------------
+  -- tx_count: increments once per submission (regular OR reversal).
+  -- INVAR tx_count <= 2 is enforced in this module.
+  ------------------------------------------------------------------
+  next(tx_count) := case
+    (fsm_state = initiating_payment | fsm_state = reversing)
+      & tx_count < 2                  : tx_count + 1;
+    TRUE                              : tx_count;
+  esac;
+
+  ------------------------------------------------------------------
+  -- Authorization record updates.
+  -- Receiver refs expose grant/revoke DEFINEs that fire for one step
+  -- when the receiver issues the corresponding c_info message.
+  ------------------------------------------------------------------
+  next(authorized_by_r0) := case
+    grant_from_r0_now  : TRUE;
+    TRUE               : authorized_by_r0;
+  esac;
+  next(authorized_by_r1) := case
+    grant_from_r1_now  : TRUE;
+    TRUE               : authorized_by_r1;
+  esac;
+
+  next(auth_revoked_r0) := case
+    revoke_from_r0_now : TRUE;
+    grant_from_r0_now  : FALSE;              -- re-grant clears prior revoke
+    TRUE               : auth_revoked_r0;
+  esac;
+  next(auth_revoked_r1) := case
+    revoke_from_r1_now : TRUE;
+    grant_from_r1_now  : FALSE;
+    TRUE               : auth_revoked_r1;
+  esac;
+
+  next(auth_method_used_r0) := case
+    grant_from_r0_now  : grant_method_from_r0;
+    TRUE               : auth_method_used_r0;
+  esac;
+  next(auth_method_used_r1) := case
+    grant_from_r1_now  : grant_method_from_r1;
+    TRUE               : auth_method_used_r1;
+  esac;
+
+  -- Per-receiver integer step-snapshot timestamps have been removed.
+  -- The Φ₁ temporal ordering is now captured by the per-slot Boolean latches
+  -- `submitted_while_authorized` and `revoked_during_pipeline`
+  -- (see MODULE transaction_slot above).
+
+  ------------------------------------------------------------------
+  -- Micro-deposit sub-FSM.
+  ------------------------------------------------------------------
+  next(md_state) := case
+    -- Enter the sub-FSM on LINK_ACK while in linking_micro.
+    fsm_state = linking_micro & link_ack_from_bo       : md_sent_1;
+    md_state = md_sent_1                               : md_sent_2;
+    md_state = md_sent_2                               : md_awaiting_confirm;
+    -- Receiver confirms amounts: transition to confirmed.
+    md_state = md_awaiting_confirm & verify_ack_now    : md_confirmed;
+    -- Otherwise the receiver may fail verification (nondeterministic).
+    md_state = md_awaiting_confirm                     : {md_awaiting_confirm, md_failed};
+    -- Re-initiation branch resets md_state.
+    fsm_state = linking_micro & md_state = md_failed
+      & md_reinit_count < 3                            : md_none;
+    TRUE                                               : md_state;
+  esac;
+
+  next(md_reinit_count) := case
+    fsm_state = linking_micro & md_state = md_failed
+      & md_reinit_count < 3                            : md_reinit_count + 1;
+    TRUE                                               : md_reinit_count;
+  esac;
+
+  ------------------------------------------------------------------
+  -- link_target_r and link_method latched from link_choice on entry
+  -- to a linking_* state (A-1 nondet).
+  ------------------------------------------------------------------
+  next(link_target_r) := case
+    fsm_state = idle
+      & link_choice in {to_r0_manual, to_r0_web, to_r0_micro} : 0;
+    fsm_state = idle
+      & link_choice in {to_r1_manual, to_r1_web, to_r1_micro} : 1;
+    TRUE                                                       : link_target_r;
+  esac;
+
+  next(link_method) := case
+    fsm_state = idle
+      & link_choice in {to_r0_manual, to_r1_manual} : manual_link;
+    fsm_state = idle
+      & link_choice in {to_r0_web, to_r1_web}       : web_login;
+    fsm_state = idle
+      & link_choice in {to_r0_micro, to_r1_micro}   : micro_deposit;
+    TRUE                                             : link_method;
+  esac;
+
+  ------------------------------------------------------------------
+  -- next_slot_id: chosen when entering initiating_payment or
+  -- reversing. We pick the lowest-indexed local slot currently in
+  -- not_submitted (deterministic) to keep state space small; this
+  -- is a modeling choice without semantic content.
+  ------------------------------------------------------------------
+  next(next_slot_id) := case
+    fsm_state = linked_ok & tx_count < 2
+      & tx_0.payment_state = not_submitted          : 0;
+    fsm_state = linked_ok & tx_count < 2            : 1;
+    fsm_state = ack_received & tx_count < 2
+      & tx_0.payment_state = not_submitted          : 0;
+    fsm_state = ack_received & tx_count < 2         : 1;
+    TRUE                                            : next_slot_id;
+  esac;
+
+  ------------------------------------------------------------------
+  -- reversing_target_local: nondet pick among currently-settled OWN
+  -- slots when entering reversing.
+  ------------------------------------------------------------------
+  next(reversing_target_local) := case
+    fsm_state = ack_received & tx_0.payment_state = settled
+                             & tx_1.payment_state = settled : {0, 1};
+    fsm_state = ack_received & tx_0.payment_state = settled : 0;
+    fsm_state = ack_received & tx_1.payment_state = settled : 1;
+    TRUE                                                    : reversing_target_local;
+  esac;
+
+
+------------------------------------------------------------------
+-- Global originator-level invariants
+------------------------------------------------------------------
+-- Submission-count bound.
+INVAR tx_count <= 2;
+
+-- Slot-count identity: tx_count equals the number of local slots
+-- that have left the not_submitted state.
+INVAR tx_count =
+      (case tx_0.payment_state != not_submitted : 1; TRUE : 0; esac)
+    + (case tx_1.payment_state != not_submitted : 1; TRUE : 0; esac);
+
+-- Phase constraint: if a payment to r_j is currently pending,
+-- authorized_by_r{j} must be TRUE at this instant (canonical
+-- over-approximation aligned with Φ₁; Boolean latches on each slot
+-- carry the fine-grained ordering).
+INVAR authorized_by_r0 | !payment_to_r0_pending;
+INVAR authorized_by_r1 | !payment_to_r1_pending;
+
+-- Ownership identity on the passive slots.
+INVAR tx_0.originator_id = id;
+INVAR tx_1.originator_id = id;
+
+-- Reversal structural identity: a slot flagged is_reversal must
+-- reference a valid OWN slot (0..3 not equal to itself).
+INVAR tx_0.is_reversal -> (tx_0.reverses_tx < 4
+                           & tx_0.reverses_tx != (id * 2 + 0));
+INVAR tx_1.is_reversal -> (tx_1.reverses_tx < 4
+                           & tx_1.reverses_tx != (id * 2 + 1));

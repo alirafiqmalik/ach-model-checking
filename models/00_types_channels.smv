@@ -1,0 +1,365 @@
+-- ===================================================================
+-- 00_types_channels.smv
+--   Shared channel modules and the environment controller for the
+--   ACH payment formal model (nuXmv 2.1.0).
+-- ===================================================================
+--
+-- Each participant exposes its send-request fields as FLAT VARs/DEFINEs
+-- directly on itself, with this naming:
+--
+--   c_info_req_valid               : boolean
+--   c_info_req_sender              : addr_domain
+--   c_info_req_receiver            : addr_domain
+--   c_info_req_msg_type            : c_info_msg_domain
+--   c_info_req_payload_tx_id       : 0..3
+--   c_info_req_payload_return_code : rc_domain
+--   c_info_req_payload_auth_method : auth_domain
+--
+--   c_dollar_req_valid       : boolean
+--   c_dollar_req_sender      : addr_domain
+--   c_dollar_req_receiver    : addr_domain
+--   c_dollar_req_msg_type    : c_dollar_msg_domain
+--   c_dollar_req_payload_tx_id : 0..3
+--   c_dollar_req_amount      : amount_domain
+--
+-- The channel modules below read these flat fields via dot-notation
+-- (e.g. `req_o0.c_info_req_valid`).  No MODULE c_info_send_request
+-- wrapper type is used.
+--
+-- Per-domain sentinel values:
+--   addr domain:       {o_0, o_1, bo, a, br, r_0, r_1, none_addr}
+--   c_info msg domain: {LINK_REQ, LINK_ACK, VERIFY_REQ, VERIFY_ACK,
+--                       GRANT_AUTH, REVOKE_AUTH,
+--                       PAYMENT_INIT, BATCH_FORWARD, BATCH_ACK,
+--                       SETTLEMENT_REQ, SETTLEMENT_ACK,
+--                       RETURN_NOTICE, REVERSAL_NOTICE, none_msg}
+--   c_dollar msg:      {FUND_DEBIT, FUND_CREDIT, FUND_REVERSE, none_msg}
+--   return code:       {R01, R02, R03, R04, R07, R08, R10, R16, R19,
+--                       R29, R36, none_rc}
+--   auth method:       {manual_link, web_login, micro_deposit, none_auth}
+--   amount (channel/   {MICRO, SMALL, LARGE, none_amt}
+--     c_dollar_req):   (the tx-slot amount has domain {MICRO,SMALL,LARGE}
+--                       without sentinel -- slot always has an amount.)
+-- ===================================================================
+
+
+-- ===================================================================
+-- A. c_info_channel
+--    Single-slot shared bus for non-monetary messages.
+--    Arbitration: fixed lexicographic priority
+--      o_0 < o_1 < r_0 < r_1 < bo < a < br
+--    Unpicked senders keep their request asserted (the participant is
+--    responsible, not the channel).
+-- ===================================================================
+MODULE c_info_channel(req_o0, req_o1, req_bo, req_a, req_br, req_r0, req_r1)
+VAR
+  occupied            : boolean;
+  sender              : {o_0, o_1, bo, a, br, r_0, r_1, none_addr};
+  receiver            : {o_0, o_1, bo, a, br, r_0, r_1, none_addr};
+  -- Message alphabet:
+  --   LINK_REQ, LINK_ACK        : linkExternalAccount handshake
+  --   VERIFY_REQ, VERIFY_ACK    : verifyAccount handshake for TPS
+  --   GRANT_AUTH, REVOKE_AUTH   : Receiver-driven authorization
+  --   PAYMENT_INIT              : Originator submits entry to ODFI (collection)
+  --   BATCH_FORWARD, BATCH_ACK  : ODFI to Operator batch transmission
+  --   SETTLEMENT_REQ, SETTLEMENT_ACK : Operator to RDFI settlement
+  --   RETURN_NOTICE             : RDFI / Operator return (Nacha Article 3)
+  --   REVERSAL_NOTICE           : Reversal entry
+  msg_type            : {LINK_REQ, LINK_ACK,
+                         VERIFY_REQ, VERIFY_ACK,
+                         GRANT_AUTH, REVOKE_AUTH,
+                         PAYMENT_INIT,
+                         BATCH_FORWARD, BATCH_ACK,
+                         SETTLEMENT_REQ, SETTLEMENT_ACK,
+                         RETURN_NOTICE,
+                         REVERSAL_NOTICE,
+                         none_msg};
+  payload_tx_id       : 0..3;
+  payload_return_code : {R01, R02, R03, R04, R07, R08, R10, R16, R19, R29, R36, none_rc};
+  payload_auth_method : {manual_link, web_login, micro_deposit, none_auth};
+
+ASSIGN
+  -- Initial: idle bus.
+  init(occupied)            := FALSE;
+  init(sender)              := none_addr;
+  init(receiver)            := none_addr;
+  init(msg_type)            := none_msg;
+  init(payload_tx_id)       := 0;
+  init(payload_return_code) := none_rc;
+  init(payload_auth_method) := none_auth;
+
+  -- Arbitration: occupied iff any request is valid.
+  next(occupied) :=
+    req_o0.c_info_req_valid | req_o1.c_info_req_valid
+    | req_r0.c_info_req_valid | req_r1.c_info_req_valid
+    | req_bo.c_info_req_valid | req_a.c_info_req_valid
+    | req_br.c_info_req_valid;
+
+  -- Sender of the picked message, by fixed lex priority.
+  next(sender) :=
+    case
+      req_o0.c_info_req_valid : o_0;
+      req_o1.c_info_req_valid : o_1;
+      req_r0.c_info_req_valid : r_0;
+      req_r1.c_info_req_valid : r_1;
+      req_bo.c_info_req_valid : bo;
+      req_a.c_info_req_valid  : a;
+      req_br.c_info_req_valid : br;
+      TRUE                    : none_addr;
+    esac;
+
+  next(receiver) :=
+    case
+      req_o0.c_info_req_valid : req_o0.c_info_req_receiver;
+      req_o1.c_info_req_valid : req_o1.c_info_req_receiver;
+      req_r0.c_info_req_valid : req_r0.c_info_req_receiver;
+      req_r1.c_info_req_valid : req_r1.c_info_req_receiver;
+      req_bo.c_info_req_valid : req_bo.c_info_req_receiver;
+      req_a.c_info_req_valid  : req_a.c_info_req_receiver;
+      req_br.c_info_req_valid : req_br.c_info_req_receiver;
+      TRUE                    : none_addr;
+    esac;
+
+  next(msg_type) :=
+    case
+      req_o0.c_info_req_valid : req_o0.c_info_req_msg_type;
+      req_o1.c_info_req_valid : req_o1.c_info_req_msg_type;
+      req_r0.c_info_req_valid : req_r0.c_info_req_msg_type;
+      req_r1.c_info_req_valid : req_r1.c_info_req_msg_type;
+      req_bo.c_info_req_valid : req_bo.c_info_req_msg_type;
+      req_a.c_info_req_valid  : req_a.c_info_req_msg_type;
+      req_br.c_info_req_valid : req_br.c_info_req_msg_type;
+      TRUE                    : none_msg;
+    esac;
+
+  next(payload_tx_id) :=
+    case
+      req_o0.c_info_req_valid : req_o0.c_info_req_payload_tx_id;
+      req_o1.c_info_req_valid : req_o1.c_info_req_payload_tx_id;
+      req_r0.c_info_req_valid : req_r0.c_info_req_payload_tx_id;
+      req_r1.c_info_req_valid : req_r1.c_info_req_payload_tx_id;
+      req_bo.c_info_req_valid : req_bo.c_info_req_payload_tx_id;
+      req_a.c_info_req_valid  : req_a.c_info_req_payload_tx_id;
+      req_br.c_info_req_valid : req_br.c_info_req_payload_tx_id;
+      TRUE                    : 0;
+    esac;
+
+  next(payload_return_code) :=
+    case
+      req_o0.c_info_req_valid : req_o0.c_info_req_payload_return_code;
+      req_o1.c_info_req_valid : req_o1.c_info_req_payload_return_code;
+      req_r0.c_info_req_valid : req_r0.c_info_req_payload_return_code;
+      req_r1.c_info_req_valid : req_r1.c_info_req_payload_return_code;
+      req_bo.c_info_req_valid : req_bo.c_info_req_payload_return_code;
+      req_a.c_info_req_valid  : req_a.c_info_req_payload_return_code;
+      req_br.c_info_req_valid : req_br.c_info_req_payload_return_code;
+      TRUE                    : none_rc;
+    esac;
+
+  next(payload_auth_method) :=
+    case
+      req_o0.c_info_req_valid : req_o0.c_info_req_payload_auth_method;
+      req_o1.c_info_req_valid : req_o1.c_info_req_payload_auth_method;
+      req_r0.c_info_req_valid : req_r0.c_info_req_payload_auth_method;
+      req_r1.c_info_req_valid : req_r1.c_info_req_payload_auth_method;
+      req_bo.c_info_req_valid : req_bo.c_info_req_payload_auth_method;
+      req_a.c_info_req_valid  : req_a.c_info_req_payload_auth_method;
+      req_br.c_info_req_valid : req_br.c_info_req_payload_auth_method;
+      TRUE                    : none_auth;
+    esac;
+
+
+-- ===================================================================
+-- B. c_dollar_channel
+-- Single-slot shared bus for monetary messages.
+-- Same arbitration as c_info.
+-- ===================================================================
+MODULE c_dollar_channel(req_o0, req_o1, req_bo, req_a, req_br, req_r0, req_r1)
+VAR
+  occupied      : boolean;
+  sender        : {o_0, o_1, bo, a, br, r_0, r_1, none_addr};
+  receiver      : {o_0, o_1, bo, a, br, r_0, r_1, none_addr};
+  msg_type      : {FUND_DEBIT, FUND_CREDIT, FUND_REVERSE, none_msg};
+  payload_tx_id : 0..3;
+  amount        : {MICRO, SMALL, LARGE, none_amt};
+
+ASSIGN
+  init(occupied)      := FALSE;
+  init(sender)        := none_addr;
+  init(receiver)      := none_addr;
+  init(msg_type)      := none_msg;
+  init(payload_tx_id) := 0;
+  init(amount)        := none_amt;
+
+  next(occupied) :=
+    req_o0.c_dollar_req_valid | req_o1.c_dollar_req_valid
+    | req_r0.c_dollar_req_valid | req_r1.c_dollar_req_valid
+    | req_bo.c_dollar_req_valid | req_a.c_dollar_req_valid
+    | req_br.c_dollar_req_valid;
+
+  next(sender) :=
+    case
+      req_o0.c_dollar_req_valid : o_0;
+      req_o1.c_dollar_req_valid : o_1;
+      req_r0.c_dollar_req_valid : r_0;
+      req_r1.c_dollar_req_valid : r_1;
+      req_bo.c_dollar_req_valid : bo;
+      req_a.c_dollar_req_valid  : a;
+      req_br.c_dollar_req_valid : br;
+      TRUE                      : none_addr;
+    esac;
+
+  next(receiver) :=
+    case
+      req_o0.c_dollar_req_valid : req_o0.c_dollar_req_receiver;
+      req_o1.c_dollar_req_valid : req_o1.c_dollar_req_receiver;
+      req_r0.c_dollar_req_valid : req_r0.c_dollar_req_receiver;
+      req_r1.c_dollar_req_valid : req_r1.c_dollar_req_receiver;
+      req_bo.c_dollar_req_valid : req_bo.c_dollar_req_receiver;
+      req_a.c_dollar_req_valid  : req_a.c_dollar_req_receiver;
+      req_br.c_dollar_req_valid : req_br.c_dollar_req_receiver;
+      TRUE                      : none_addr;
+    esac;
+
+  next(msg_type) :=
+    case
+      req_o0.c_dollar_req_valid : req_o0.c_dollar_req_msg_type;
+      req_o1.c_dollar_req_valid : req_o1.c_dollar_req_msg_type;
+      req_r0.c_dollar_req_valid : req_r0.c_dollar_req_msg_type;
+      req_r1.c_dollar_req_valid : req_r1.c_dollar_req_msg_type;
+      req_bo.c_dollar_req_valid : req_bo.c_dollar_req_msg_type;
+      req_a.c_dollar_req_valid  : req_a.c_dollar_req_msg_type;
+      req_br.c_dollar_req_valid : req_br.c_dollar_req_msg_type;
+      TRUE                      : none_msg;
+    esac;
+
+  next(payload_tx_id) :=
+    case
+      req_o0.c_dollar_req_valid : req_o0.c_dollar_req_payload_tx_id;
+      req_o1.c_dollar_req_valid : req_o1.c_dollar_req_payload_tx_id;
+      req_r0.c_dollar_req_valid : req_r0.c_dollar_req_payload_tx_id;
+      req_r1.c_dollar_req_valid : req_r1.c_dollar_req_payload_tx_id;
+      req_bo.c_dollar_req_valid : req_bo.c_dollar_req_payload_tx_id;
+      req_a.c_dollar_req_valid  : req_a.c_dollar_req_payload_tx_id;
+      req_br.c_dollar_req_valid : req_br.c_dollar_req_payload_tx_id;
+      TRUE                      : 0;
+    esac;
+
+  next(amount) :=
+    case
+      req_o0.c_dollar_req_valid : req_o0.c_dollar_req_amount;
+      req_o1.c_dollar_req_valid : req_o1.c_dollar_req_amount;
+      req_r0.c_dollar_req_valid : req_r0.c_dollar_req_amount;
+      req_r1.c_dollar_req_valid : req_r1.c_dollar_req_amount;
+      req_bo.c_dollar_req_valid : req_bo.c_dollar_req_amount;
+      req_a.c_dollar_req_valid  : req_a.c_dollar_req_amount;
+      req_br.c_dollar_req_valid : req_br.c_dollar_req_amount;
+      TRUE                      : none_amt;
+    esac;
+
+
+-- ===================================================================
+-- C. env
+--    Global ACH phase controller (Boolean event-variable encoding).
+--    Boolean event-variable pairs are used instead of discrete clock
+--    ticks to limit state-space growth.  The prior `step : 0..20`
+--    integer clock and per-slot `t_*_step` snapshots are replaced by a
+--    single phase enum backing the eight event-flag DEFINEs that the
+--    rest of the system reads.  Reachable phase configurations: 9
+--    (down from 2^8 = 256 before ordering constraints).
+-- ===================================================================
+MODULE env
+VAR
+  -- Single total-order ACH phase (Nacha sequence).  Every participant
+  -- reads the phase indirectly through the Boolean DEFINE aliases
+  -- below, so no participant module needs any change.
+  --   ph_idle           : before any collection activity
+  --   ph_batch_open     : collection window is open (batch_started)
+  --   ph_batch_closed   : collection window closed (batch_expired)
+  --   ph_settling       : settlement in progress (settlement_started)
+  --   ph_settle_closed  : settlement complete (settlement_expired)
+  --   ph_transfer_open  : fund transfer underway (transfer_started)
+  --   ph_transfer_done  : fund transfer complete (transfer_expired)
+  --   ph_return_open    : return window running (return_window_started)
+  --   ph_return_closed  : return window expired (return_window_expired)
+  phase : { ph_idle,
+            ph_batch_open, ph_batch_closed,
+            ph_settling,   ph_settle_closed,
+            ph_transfer_open, ph_transfer_done,
+            ph_return_open,   ph_return_closed };
+
+  -- Number of completed batch cycles (three windows per verification run).
+  window_count : 0..3;
+
+DEFINE
+  -- Banks are trusted in the base model.  The disjunct
+  -- "exists A. Compromised(A)" in Phi_1, Phi_2, Phi_3 therefore reduces
+  -- to FALSE here.
+  Compromised_any := FALSE;
+
+  -- -----------------------------------------------------------------
+  -- Boolean event-variable pairs exposed to every participant module.
+  -- Semantics match the previous per-flag VARs; participants read
+  -- env.batch_started, env.batch_expired, env.settlement_started, etc.
+  -- as before.
+  -- Ordering: once a started-flag is TRUE it stays TRUE; the paired
+  -- expired-flag is TRUE for every later phase.
+  -- -----------------------------------------------------------------
+  batch_started         := !(phase = ph_idle);
+
+  batch_expired         := phase in { ph_batch_closed,
+                                      ph_settling, ph_settle_closed,
+                                      ph_transfer_open, ph_transfer_done,
+                                      ph_return_open,   ph_return_closed };
+
+  settlement_started    := phase in { ph_settling, ph_settle_closed,
+                                      ph_transfer_open, ph_transfer_done,
+                                      ph_return_open,   ph_return_closed };
+
+  settlement_expired    := phase in { ph_settle_closed,
+                                      ph_transfer_open, ph_transfer_done,
+                                      ph_return_open,   ph_return_closed };
+
+  transfer_started      := phase in { ph_transfer_open, ph_transfer_done,
+                                      ph_return_open,   ph_return_closed };
+
+  transfer_expired      := phase in { ph_transfer_done,
+                                      ph_return_open,   ph_return_closed };
+
+  return_window_started := phase in { ph_return_open, ph_return_closed };
+
+  return_window_expired := phase = ph_return_closed;
+
+ASSIGN
+  -- Initial state: idle before first collection window.
+  init(phase)        := ph_idle;
+  init(window_count) := 0;
+
+  -- Monotonic phase advance. Each step the phase either stays put or
+  -- advances by one slot in the total order. The env is fully
+  -- nondeterministic within that rule so the model checker can place
+  -- any participant action in any admissible phase.
+  next(phase) :=
+    case
+      phase = ph_idle          : { ph_idle,          ph_batch_open };
+      phase = ph_batch_open    : { ph_batch_open,    ph_batch_closed };
+      phase = ph_batch_closed  : { ph_batch_closed,  ph_settling };
+      phase = ph_settling      : { ph_settling,      ph_settle_closed };
+      phase = ph_settle_closed : { ph_settle_closed, ph_transfer_open };
+      phase = ph_transfer_open : { ph_transfer_open, ph_transfer_done };
+      phase = ph_transfer_done : { ph_transfer_done, ph_return_open };
+      phase = ph_return_open   : { ph_return_open,   ph_return_closed };
+      TRUE                     : ph_return_closed;
+    esac;
+
+  -- Increment window_count on the rising edge of batch_expired, i.e.
+  -- on the transition ph_batch_open -> ph_batch_closed.
+  next(window_count) :=
+    case
+      phase = ph_batch_open & next(phase) = ph_batch_closed
+        & window_count < 3                                  : window_count + 1;
+      TRUE                                                  : window_count;
+    esac;
+
+-- Hard bound on completed cycles.
+INVAR window_count <= 3;
