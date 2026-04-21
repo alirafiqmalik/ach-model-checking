@@ -1,6 +1,14 @@
 # Merge model fragments into $(OUTPUT); optional verify with nuXmv.
+# Default binary matches host OS when run outside Docker (see run_all_artifcate.sh).
 
-NUXMV      ?= ./tools/nuXmv
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+NUXMV      ?= ./tools/nuxmv-linux
+else ifeq ($(UNAME_S),Darwin)
+NUXMV      ?= ./tools/nuxmv-mac
+else
+NUXMV      ?= ./tools/nuxmv-linux
+endif
 OUTPUT     := _main_model.smv
 MERGE      := ./tools/merge_smv.sh
 

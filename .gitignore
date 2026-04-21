@@ -1,3 +1,6 @@
+.*
+!.gitignore
+!.dockerignore
 _main_model.smv
 logs/
 artifacts

@@ -6,7 +6,7 @@ FIX="${ROOT}/tests/fixtures/minimal"
 OUT="${FIX}/_merged_test.smv"
 
 if [[ -z "${NUXMV:-}" ]]; then
-  for c in nuXmv nuxmv nuxmv-linux; do
+  for c in nuXmv nuxmv nuxmv-mac nuxmv-linux; do
     p="${ROOT}/tools/$c"
     if [[ -x "$p" ]]; then
       NUXMV="$p"
