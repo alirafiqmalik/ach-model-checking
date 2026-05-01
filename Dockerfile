@@ -10,10 +10,10 @@ RUN apt-get update \
 WORKDIR /work
 
 COPY Makefile ./
-COPY run_all_artifcate.sh ./
+COPY run_all_artifact.sh ./
 COPY models ./models
 COPY tools/merge_smv.sh tools/nuxmv-linux tools/nuxmv_model_stats.py ./tools/
-RUN chmod +x tools/nuxmv-linux tools/merge_smv.sh run_all_artifcate.sh
+RUN chmod +x tools/nuxmv-linux tools/merge_smv.sh run_all_artifact.sh
 
 ENV NUXMV=/work/tools/nuxmv-linux
 ENV VERIFY_MODE=quick

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Deprecated wrapper: use tools/nuxmv_model_stats.py (invoked from run_all_artifcate.sh).
+# Deprecated wrapper: use tools/nuxmv_model_stats.py (invoked from run_all_artifact.sh).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"

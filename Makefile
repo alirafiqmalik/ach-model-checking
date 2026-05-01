@@ -1,5 +1,5 @@
 # Merge model fragments into $(OUTPUT); optional verify with nuXmv.
-# Default binary matches host OS when run outside Docker (see run_all_artifcate.sh).
+# Default binary matches host OS when run outside Docker (see run_all_artifact.sh).
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)

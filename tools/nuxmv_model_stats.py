@@ -3,7 +3,7 @@
 Emit a Markdown report of nuXmv static (BDD/FSM/vars) and dynamic (verification) stats.
 
 Static: batch nuXmv with `go`, print_bdd_stats, print_fsm_stats, show_vars, print_usage.
-Dynamic: parse IC3 log(s) and optional timing.tsv produced by run_all_artifcate.sh.
+Dynamic: parse IC3 log(s) and optional timing.tsv produced by run_all_artifact.sh.
 """
 from __future__ import annotations
 

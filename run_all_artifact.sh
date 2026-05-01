@@ -2,13 +2,13 @@
 # Single entry point for ACM CCS artifacts: merge, verify (optional), Markdown model stats.
 #
 # Usage:
-#   ./run_all_artifcate.sh                     # Docker (default): build image, run merge+verify+stats
-#   ./run_all_artifcate.sh --no-docker         # Host: pick tools/nuxmv-linux (Linux) or tools/nuxmv-mac (macOS)
+#   ./run_all_artifact.sh                     # Docker (default): build image, run merge+verify+stats
+#   ./run_all_artifact.sh --no-docker         # Host: pick tools/nuxmv-linux (Linux) or tools/nuxmv-mac (macOS)
 #
 # Env: IMAGE_NAME (default ach-model:nuxmv)  DOCKER_PLATFORM (default linux/amd64)
 #      VERIFY_MODE=quick|full|merge-only     ARTIFACT_DIR (optional explicit output directory)
 #
-# Internal (container): ./run_all_artifcate.sh --inside-docker
+# Internal (container): ./run_all_artifact.sh --inside-docker
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

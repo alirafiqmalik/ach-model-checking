@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 set -euo pipefail
-exec /work/run_all_artifcate.sh --inside-docker
+exec /work/run_all_artifact.sh --inside-docker
