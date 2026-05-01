@@ -1,0 +1,10 @@
+.*
+!.gitignore
+!.dockerignore
+output/
+# leftover paths from the pre-unification layout (repo root only)
+/_main_model.smv
+/logs/
+/artifacts
+/my-out/
+tools/__pycache__

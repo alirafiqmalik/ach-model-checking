@@ -1,0 +1,10 @@
+.git
+**/.DS_Store
+output
+artifacts
+logs
+my-out
+saved-reference-results
+docker-out
+*.log
+_main_model.smv
