@@ -159,9 +159,9 @@ def _ic3_verdict(log_text: str) -> str | None:
 
 
 _INVAR_NAMES = {
-    0: "Φ1 Continuous Authorization",
-    1: "Φ2 Zero-Sum Invariant",
-    2: "Φ3 Settlement Finality",
+    0: "Φ1 Continuous Authorization (A1: creditBLEED Attack)",
+    1: "Φ2 Zero-Sum Invariant (A2: creditMINT Attack)",
+    2: "Φ3 Settlement Finality (A3: creditRESET Attack)",
 }
 _TRUE_FALSE = re.compile(r"is (true|false)\s*$", re.I)
 _EF_TRAILER = re.compile(r"EF_RESULT\s+(true|false|inconclusive)", re.I)

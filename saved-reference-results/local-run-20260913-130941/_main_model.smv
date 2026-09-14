@@ -409,7 +409,7 @@ DEFINE
 
   -- Paper ResourceAvailable(r, E): issuer restores the card limit at
   -- internal posting (card_posted on a credit_card receiver;
-  -- paper §5.1 Phi_3 / A3 §6.3).
+  -- paper §5.1 Phi_3 / A3: creditRESET Attack §6.3).
   resource_available :=
         recv_account_type = credit_card
       & card_posted;
@@ -639,8 +639,9 @@ IVAR
   link_req_pulse : boolean;
 
   -- submit_companion submits both local slots in one step (two-entry
-  -- Nacha file). A1 (single debit) leaves it false. A2 uses it so a
-  -- MICRO credit is originated with a MICRO debit.
+  -- Nacha file). A1: creditBLEED Attack (single debit) leaves it false.
+  -- A2: creditMINT Attack uses it so a MICRO credit is originated with
+  -- a MICRO debit.
   submit_companion : boolean;
 
 
@@ -2645,7 +2646,7 @@ DEFINE
 
   -- n_credits_* / n_debits_* count settled postings (paper §5.1, §6.2).
   -- A returned debit is still in the cycle but is not a settled debit,
-  -- so per-class equality can fail (paper A2). SMALL and LARGE are
+  -- so per-class equality can fail (paper A2: creditMINT Attack). SMALL and LARGE are
   -- the paper's regular class K.
   tx0_settled := tx0_state = settled;
   tx1_settled := tx1_state = settled;
@@ -2810,9 +2811,9 @@ INVAR cycle_complete ->
 --
 -- Instance names (orig_0, odfi_i) avoid colliding with bus-address enums.
 --
--- Φ1 Continuous Authorization
--- Φ2 Zero-Sum Invariant (per-class)
--- Φ3 Settlement Finality
+-- Φ1 Continuous Authorization (A1: creditBLEED Attack)
+-- Φ2 Zero-Sum Invariant (per-class) (A2: creditMINT Attack)
+-- Φ3 Settlement Finality (A3: creditRESET Attack)
 -- EF witnesses for reachable milestone states
 --
 -- JUSTICE: batch windows and logical-clock advance.
@@ -2914,17 +2915,18 @@ JUSTICE env_i.return_window_expired;
 -- check_invar_ic3 -n uses show_property unified indices (CTL SPECs
 -- first, then Invar). Scripts look up Invar indices; they are not 0, 1, 2.
 
--- Φ1 Continuous Authorization.
+-- Φ1 Continuous Authorization (A1: creditBLEED Attack).
 -- Exists-compromised disjunct is FALSE in the base model.
 INVARSPEC ( phi1_ok_tx0 & phi1_ok_tx1 & phi1_ok_tx2 & phi1_ok_tx3 );
 
--- Φ2 Zero-Sum Invariant, per-class (paper K = {micro, regular}).
+-- Φ2 Zero-Sum Invariant, per-class (paper K = {micro, regular})
+-- (A2: creditMINT Attack).
 -- Counts are settled entries (n_credits_* / n_debits_*).
 INVARSPEC ( g.cycle_complete ->
             ( g.n_credits_micro = g.n_debits_micro
             & g.n_credits_regular = g.n_debits_regular ) );
 
--- Φ3 Settlement Finality. Counterexample: resource released while
+-- Φ3 Settlement Finality (A3: creditRESET Attack). Counterexample: resource released while
 -- the return window is still open. INVARSPEC (not AG-AF): JUSTICE
 -- made the old CTL form vacuously true.
 INVARSPEC

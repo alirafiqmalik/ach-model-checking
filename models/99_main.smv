@@ -12,9 +12,9 @@
 --
 -- Instance names (orig_0, odfi_i) avoid colliding with bus-address enums.
 --
--- Φ1 Continuous Authorization
--- Φ2 Zero-Sum Invariant (per-class)
--- Φ3 Settlement Finality
+-- Φ1 Continuous Authorization (A1: creditBLEED Attack)
+-- Φ2 Zero-Sum Invariant (per-class) (A2: creditMINT Attack)
+-- Φ3 Settlement Finality (A3: creditRESET Attack)
 -- EF witnesses for reachable milestone states
 --
 -- JUSTICE: batch windows and logical-clock advance.
@@ -116,17 +116,18 @@ JUSTICE env_i.return_window_expired;
 -- check_invar_ic3 -n uses show_property unified indices (CTL SPECs
 -- first, then Invar). Scripts look up Invar indices; they are not 0, 1, 2.
 
--- Φ1 Continuous Authorization.
+-- Φ1 Continuous Authorization (A1: creditBLEED Attack).
 -- Exists-compromised disjunct is FALSE in the base model.
 INVARSPEC ( phi1_ok_tx0 & phi1_ok_tx1 & phi1_ok_tx2 & phi1_ok_tx3 );
 
--- Φ2 Zero-Sum Invariant, per-class (paper K = {micro, regular}).
+-- Φ2 Zero-Sum Invariant, per-class (paper K = {micro, regular})
+-- (A2: creditMINT Attack).
 -- Counts are settled entries (n_credits_* / n_debits_*).
 INVARSPEC ( g.cycle_complete ->
             ( g.n_credits_micro = g.n_debits_micro
             & g.n_credits_regular = g.n_debits_regular ) );
 
--- Φ3 Settlement Finality. Counterexample: resource released while
+-- Φ3 Settlement Finality (A3: creditRESET Attack). Counterexample: resource released while
 -- the return window is still open. INVARSPEC (not AG-AF): JUSTICE
 -- made the old CTL form vacuously true.
 INVARSPEC

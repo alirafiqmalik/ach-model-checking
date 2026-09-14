@@ -1,8 +1,11 @@
+
 # ACH nuXmv model (paper artifact)
 
-Split NuSMV / nuXmv model of ACH-style payment flow. Scripts merge the fragments and run nuXmv. A short Markdown report is written afterward.
+Artifacts for the ACM CCS 2026 paper: "Credit Without Debit: Formal Verification of Banking Payment Systems" by Ali Hamza Malik and Muhammad Taqi Raza (University of Massachusetts Amherst).
 
-Redacted screenshots of the live attack tests are in the paper.
+This project contains the NuSMV / nuXmv formal models for ACH payment payment flow along with the scripts for running and compiling the verifaction results. The results are compiled into a markdown file for easy review fo results.
+
+Our empirical evaluation uses real consumer bank accounts owned by members of the research team. Raw account screenshots and transaction logs cannot be shared publicly because they contain personally identifiable financial information. The paper provides the redacted screenshots documenting the user-visible state changes for each CWD instance (A1: creditBLEED Attack, A2: creditMINT Attack, and A3: creditRESET Attack).
 
 ## Requirements
 
@@ -81,7 +84,7 @@ SKIP_INVAR=1 ARTIFACT_DIR=./output/local-run-<timestamp> ./run_all_artifact.sh -
 
 ## Expected results
 
-`VERIFY_MODE=quick` on a 16-thread, 15 GiB machine. Φ1–Φ3 are IC3 (false: the A1/A2/A3 attacks). Each `EF` row is BMC of `!(p)` with `k=50`: true is a witness, false is unreachable, inconclusive means no proof or counterexample inside the bound. INV jobs run in parallel (wall clock is Φ2, about 48 minutes). EF jobs run after that.
+`VERIFY_MODE=quick` on a 16-thread, 15 GiB machine. Φ1–Φ3 are IC3 (false: the A1: creditBLEED, A2: creditMINT, and A3: creditRESET attacks). Each `EF` row is BMC of `!(p)` with `k=50`: true is a witness, false is unreachable, inconclusive means no proof or counterexample inside the bound. INV jobs run in parallel (wall clock is Φ2, about 48 minutes). EF jobs run after that.
 
 | # | Kind | Formula | Result | Time (s) |
 | --- | --- | --- | --- | --- |
@@ -130,9 +133,9 @@ Paper Φ1–Φ3 are the three `INVARSPEC`s. `show_property` numbers them 35–37
 
 | Paper | Attack | Invar # | Log | Name | CEX |
 | --- | --- | --- | --- | --- | --- |
-| Φ1 | A1 | 35 | spec-0-INV.log | Continuous Authorization | ODFI provisional debit + R16 |
-| Φ2 | A2 | 36 | spec-1-INV.log | Zero-Sum Invariant | MICRO credit settled vs matching MICRO debit R08/R16, settled counts unequal |
-| Φ3 | A3 | 37 | spec-2-INV.log | Settlement Finality | issuer card posting with `resource_available` while the return window is still open |
+| Φ1 | A1: creditBLEED Attack | 35 | spec-0-INV.log | Continuous Authorization | ODFI provisional debit + R16 |
+| Φ2 | A2: creditMINT Attack | 36 | spec-1-INV.log | Zero-Sum Invariant | MICRO credit settled vs matching MICRO debit R08/R16, settled counts unequal |
+| Φ3 | A3: creditRESET Attack | 37 | spec-2-INV.log | Settlement Finality | issuer card posting with `resource_available` while the return window is still open |
 
 ## Makefile
 

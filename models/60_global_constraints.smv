@@ -34,7 +34,7 @@ DEFINE
 
   -- n_credits_* / n_debits_* count settled postings (paper §5.1, §6.2).
   -- A returned debit is still in the cycle but is not a settled debit,
-  -- so per-class equality can fail (paper A2). SMALL and LARGE are
+  -- so per-class equality can fail (paper A2: creditMINT Attack). SMALL and LARGE are
   -- the paper's regular class K.
   tx0_settled := tx0_state = settled;
   tx1_settled := tx1_state = settled;

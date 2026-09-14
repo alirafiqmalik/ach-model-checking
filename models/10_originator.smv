@@ -88,7 +88,7 @@ DEFINE
 
   -- Paper ResourceAvailable(r, E): issuer restores the card limit at
   -- internal posting (card_posted on a credit_card receiver;
-  -- paper §5.1 Phi_3 / A3 §6.3).
+  -- paper §5.1 Phi_3 / A3: creditRESET Attack §6.3).
   resource_available :=
         recv_account_type = credit_card
       & card_posted;
@@ -318,8 +318,9 @@ IVAR
   link_req_pulse : boolean;
 
   -- submit_companion submits both local slots in one step (two-entry
-  -- Nacha file). A1 (single debit) leaves it false. A2 uses it so a
-  -- MICRO credit is originated with a MICRO debit.
+  -- Nacha file). A1: creditBLEED Attack (single debit) leaves it false.
+  -- A2: creditMINT Attack uses it so a MICRO credit is originated with
+  -- a MICRO debit.
   submit_companion : boolean;
 
 
