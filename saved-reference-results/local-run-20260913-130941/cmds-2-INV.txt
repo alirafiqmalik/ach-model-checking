@@ -1,0 +1,8 @@
+set on_failure_script_quits
+read_model -i /home/ahm/Desktop/project/artifacts-eval/ach-model-checking/output/_main_model.smv
+flatten_hierarchy
+encode_variables
+build_boolean_model
+go_msat
+check_invar_ic3 -n 37
+quit

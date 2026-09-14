@@ -1,0 +1,104 @@
+*** This is nuXmv 2.1.0 (compiled on Fri Nov 29 13:41:31 2024)
+*** Copyright (c) 2014-2024, Fondazione Bruno Kessler
+*** For more information on nuXmv see https://nuxmv.fbk.eu
+*** or email to <nuxmv@fbk.eu>.
+*** Please report bugs at Please report bugs to <nusmv-users@fbk.eu>
+*** (click on "Login Anonymously" to access)
+*** Alternatively write to <nuxmv@fbk.eu>.
+
+*** This version of nuXmv is linked to NuSMV 2.7.0.
+*** For more information on NuSMV see <http://nusmv.fbk.eu>
+*** or email to <nusmv-users@fbk.eu>.
+*** Copyright (C) 2010-2024, Fondazione Bruno Kessler
+
+*** This version of nuXmv is linked to the CUDD library version 2.4.1
+*** Copyright (c) 1995-2004, Regents of the University of Colorado
+
+*** This version of nuXmv is linked to the MiniSat SAT solver. 
+*** See http://minisat.se/MiniSat.html
+*** Copyright (c) 2003-2006, Niklas Een, Niklas Sorensson
+*** Copyright (c) 2007-2010, Niklas Sorensson
+
+*** This version of nuXmv is linked to MathSAT
+*** Copyright (C) 2009-2019 by Fondazione Bruno Kessler
+*** Copyright (C) 2009-2019 by University of Trento and others
+*** See http://mathsat.fbk.eu
+
+**** PROPERTY LIST [ Type, Status, Counter-example Number, Name ] ****
+--------------------------  PROPERTY LIST  -------------------------
+000 :EF orig_0.fsm_state = linked_ok 
+  [CTL            Unchecked      N/A    N/A]
+001 :EF orig_0.fsm_state = link_failed 
+  [CTL            Unchecked      N/A    N/A]
+002 :EF orig_0.md_state = md_confirmed 
+  [CTL            Unchecked      N/A    N/A]
+003 :EF orig_0.md_state = md_failed 
+  [CTL            Unchecked      N/A    N/A]
+004 :EF orig_0.tx_0.payment_state = rejected 
+  [CTL            Unchecked      N/A    N/A]
+005 :EF orig_0.tx_0.payment_state = returned 
+  [CTL            Unchecked      N/A    N/A]
+006 :EF orig_0.tx_0.payment_state = reversed 
+  [CTL            Unchecked      N/A    N/A]
+007 :EF orig_0.fsm_state = reversing 
+  [CTL            Unchecked      N/A    N/A]
+008 :EF recv_0.fsm_state = auth_granted 
+  [CTL            Unchecked      N/A    N/A]
+009 :EF recv_0.fsm_state = auth_revoked_state 
+  [CTL            Unchecked      N/A    N/A]
+010 :EF recv_0.fsm_state = confirmed_md 
+  [CTL            Unchecked      N/A    N/A]
+011 :EF recv_0.fsm_state = rejected_md 
+  [CTL            Unchecked      N/A    N/A]
+012 :EF recv_0.fsm_state = notified_return 
+  [CTL            Unchecked      N/A    N/A]
+013 :EF recv_0.fsm_state = account_state_changed 
+  [CTL            Unchecked      N/A    N/A]
+014 :EF odfi_i.fsm_state = tps_verified 
+  [CTL            Unchecked      N/A    N/A]
+015 :EF odfi_i.fsm_state = tps_rejected 
+  [CTL            Unchecked      N/A    N/A]
+016 :EF odfi_i.fsm_state = validation_rejected 
+  [CTL            Unchecked      N/A    N/A]
+017 :EF odfi_i.fsm_state = operator_acked 
+  [CTL            Unchecked      N/A    N/A]
+018 :EF odfi_i.fsm_state = link_acked 
+  [CTL            Unchecked      N/A    N/A]
+019 :EF odfi_i.u3_batch_reject 
+  [CTL            Unchecked      N/A    N/A]
+020 :EF odfi_i.u3_flag_entries 
+  [CTL            Unchecked      N/A    N/A]
+021 :EF ach_i.fsm_state = data_rejected_batch 
+  [CTL            Unchecked      N/A    N/A]
+022 :EF ach_i.fsm_state = data_rejected_entry 
+  [CTL            Unchecked      N/A    N/A]
+023 :EF ach_i.fsm_state = forwarded_ack 
+  [CTL            Unchecked      N/A    N/A]
+024 :EF rdfi_i.fsm_state = settled_state 
+  [CTL            Unchecked      N/A    N/A]
+025 :EF rdfi_i.fsm_state = returning 
+  [CTL            Unchecked      N/A    N/A]
+026 :EF rdfi_i.fsm_state = reversed_state 
+  [CTL            Unchecked      N/A    N/A]
+027 :EF rdfi_i.selected_return_code = R16 
+  [CTL            Unchecked      N/A    N/A]
+028 :EF rdfi_i.selected_return_code = R29 
+  [CTL            Unchecked      N/A    N/A]
+029 :EF env_i.window_count = 3 
+  [CTL            Unchecked      N/A    N/A]
+030 :EF env_i.phase = ph_return_closed 
+  [CTL            Unchecked      N/A    N/A]
+031 :EF g.n_credits_micro > 0 
+  [CTL            Unchecked      N/A    N/A]
+032 :EF g.n_credits_small > 0 
+  [CTL            Unchecked      N/A    N/A]
+033 :EF g.n_credits_large > 0 
+  [CTL            Unchecked      N/A    N/A]
+034 :EF g.n_debits_micro > 0 
+  [CTL            Unchecked      N/A    N/A]
+035 :(((phi1_ok_tx0 & phi1_ok_tx1) & phi1_ok_tx2) & phi1_ok_tx3) 
+  [Invar          Unchecked      N/A    N/A]
+036 :(g.cycle_complete -> (g.n_credits_micro = g.n_debits_micro & g.n_credits_regular = g.n_debits_regular)) 
+  [Invar          Unchecked      N/A    N/A]
+037 :((((resource_released_tx0 -> env_i.return_window_expired) & (resource_released_tx1 -> env_i.return_window_expired)) & (resource_released_tx2 -> env_i.return_window_expired)) & (resource_released_tx3 -> env_i.return_window_expired)) 
+  [Invar          Unchecked      N/A    N/A]

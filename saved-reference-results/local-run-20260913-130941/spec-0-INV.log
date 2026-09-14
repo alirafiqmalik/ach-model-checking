@@ -1,0 +1,1239 @@
+*** This is nuXmv 2.1.0 (compiled on Fri Nov 29 13:41:31 2024)
+*** Copyright (c) 2014-2024, Fondazione Bruno Kessler
+*** For more information on nuXmv see https://nuxmv.fbk.eu
+*** or email to <nuxmv@fbk.eu>.
+*** Please report bugs at Please report bugs to <nusmv-users@fbk.eu>
+*** (click on "Login Anonymously" to access)
+*** Alternatively write to <nuxmv@fbk.eu>.
+
+*** This version of nuXmv is linked to NuSMV 2.7.0.
+*** For more information on NuSMV see <http://nusmv.fbk.eu>
+*** or email to <nusmv-users@fbk.eu>.
+*** Copyright (C) 2010-2024, Fondazione Bruno Kessler
+
+*** This version of nuXmv is linked to the CUDD library version 2.4.1
+*** Copyright (c) 1995-2004, Regents of the University of Colorado
+
+*** This version of nuXmv is linked to the MiniSat SAT solver. 
+*** See http://minisat.se/MiniSat.html
+*** Copyright (c) 2003-2006, Niklas Een, Niklas Sorensson
+*** Copyright (c) 2007-2010, Niklas Sorensson
+
+*** This version of nuXmv is linked to MathSAT
+*** Copyright (C) 2009-2019 by Fondazione Bruno Kessler
+*** Copyright (C) 2009-2019 by University of Trento and others
+*** See http://mathsat.fbk.eu
+
+Parsing file "/home/ahm/Desktop/project/artifacts-eval/ach-model-checking/output/_main_model.smv" ..... done.
+Flattening hierarchy...
+FlatHierarchy: calculating vars constraints...
+FlatHierarchy: vars constraints calculated
+checking for multiple assignments in process ...
+Done
+checking for circular assignments in process ...
+Done
+TraceMgr: registered layer 'model'
+...done
+Building variables...
+Initializing global boolean encoding...
+Global boolean encoding initialized.
+
+Heuristics "basic" is going to be used to create varordering statically
+
+Initializing global BDD encoding...
+Global BDD encoding initialized.
+...done
+
+Creating the scalar FSM...
+FlatHierarchy: calculating vars constraints...
+FlatHierarchy: vars constraints calculated
+Triggering postponed calculation of vars constraints
+FlatHierarchy: calculating vars constraints...
+FlatHierarchy: vars constraints calculated
+Successfully created the scalar FSM
+
+Creating the boolean FSM...
+Triggering postponed calculation of vars constraints
+FlatHierarchy: calculating vars constraints...
+FlatHierarchy: vars constraints calculated
+Warning: cannot assign value 4 to variable env_i.window_count
+Warning: cannot assign value 3 to variable recv_0.md_received_credits
+Warning: cannot assign value 3 to variable recv_1.md_received_credits
+Warning: cannot assign value 2 to variable recv_0.target_originator
+Warning: cannot assign value 2 to variable recv_1.target_originator
+Warning: cannot assign value 3 to variable orig_0.tx_count
+Warning: cannot assign value 4 to variable orig_0.md_reinit_count
+Warning: cannot assign value 3 to variable orig_1.tx_count
+Warning: cannot assign value 4 to variable orig_1.md_reinit_count
+Warning: cannot assign value 4 to variable rdfi_i.c_info_req_payload_tx_id
+Warning: cannot assign value 4 to variable rdfi_i.c_dollar_req_payload_tx_id
+Successfully created the boolean FSM
+
+The boolean sexp model has been built from file /home/ahm/Desktop/project/artifacts-eval/ach-model-checking/output/_main_model.smv.
+
+Initializing global mathsat encoding...
+Global mathsat encoding initialized.
+Checking invariant properties via internal simplic3 library
+-- no proof or counterexample found with bound 4
+-- no proof or counterexample found with bound 5
+-- no proof or counterexample found with bound 6
+-- no proof or counterexample found with bound 7
+-- no proof or counterexample found with bound 8
+-- no proof or counterexample found with bound 9
+-- no proof or counterexample found with bound 10
+-- no proof or counterexample found with bound 11
+-- no proof or counterexample found with bound 12
+-- no proof or counterexample found with bound 13
+-- no proof or counterexample found with bound 14
+-- no proof or counterexample found with bound 15
+-- no proof or counterexample found with bound 16
+-- no proof or counterexample found with bound 17
+-- no proof or counterexample found with bound 18
+-- no proof or counterexample found with bound 19
+-- invariant (((phi1_ok_tx0 & phi1_ok_tx1) & phi1_ok_tx2) & phi1_ok_tx3)  is false
+-- as demonstrated by the following execution sequence
+Trace Description: IC3 counterexample 
+Trace Type: Counterexample 
+  -> State: 1.1 <-
+    env_i.phase = ph_idle
+    recv_0.fsm_state = idle
+    recv_0.md_pending_for_originator = 2
+    recv_0.md_received_credits = 0
+    recv_0.c_info_req_msg_type = none_msg
+    recv_0.c_info_req_payload_return_code = none_rc
+    recv_1.fsm_state = idle
+    recv_1.md_pending_for_originator = 2
+    recv_1.md_received_credits = 0
+    recv_1.c_info_req_msg_type = none_msg
+    recv_1.c_info_req_payload_return_code = none_rc
+    orig_0.tx_0.recv_account_type = checking
+    orig_0.tx_0.amount = SMALL
+    orig_0.tx_0.return_code = none_rc
+    orig_0.tx_0.reverses_tx = 4
+    orig_0.tx_1.recv_account_type = checking
+    orig_0.tx_1.amount = SMALL
+    orig_0.tx_1.return_code = none_rc
+    orig_0.tx_1.reverses_tx = 4
+    orig_0.tx_count = 0
+    orig_0.fsm_state = idle
+    orig_0.md_state = md_none
+    orig_1.tx_0.recv_account_type = checking
+    orig_1.tx_0.amount = SMALL
+    orig_1.tx_0.return_code = none_rc
+    orig_1.tx_0.reverses_tx = 4
+    orig_1.tx_1.recv_account_type = checking
+    orig_1.tx_1.amount = SMALL
+    orig_1.tx_1.return_code = none_rc
+    orig_1.tx_1.reverses_tx = 4
+    orig_1.tx_count = 0
+    orig_1.fsm_state = idle
+    orig_1.md_state = md_none
+    odfi_i.fsm_state = idle
+    odfi_i.last_processed_tx_id = 4
+    odfi_i.last_link_requester = none_addr
+    odfi_i.c_info_req_msg_type = none_msg
+    odfi_i.c_info_req_payload_return_code = none_rc
+    ach_i.fsm_state = idle
+    ach_i.return_code_for_rejected = none_rc
+    ach_i.c_info_req_msg_type = none_msg
+    ach_i.c_info_req_payload_return_code = none_rc
+    rdfi_i.fsm_state = idle
+    rdfi_i.r0_account_status = FROZEN
+    rdfi_i.r1_account_status = UNAUTHORIZED
+    rdfi_i.last_processed_tx_id = 4
+    rdfi_i.selected_return_code = none_rc
+    rdfi_i.c_info_req_msg_type = none_msg
+    rdfi_i.c_info_req_payload_return_code = none_rc
+    c_info.msg_type = none_msg
+    c_info.payload_return_code = none_rc
+    orig_0.tx_0.payment_state = not_submitted
+    orig_0.tx_1.payment_state = not_submitted
+    orig_1.tx_0.payment_state = not_submitted
+    orig_1.tx_1.payment_state = not_submitted
+    orig_1.tx_1.tx_code = credit
+    orig_1.tx_0.tx_code = credit
+    orig_0.tx_1.tx_code = credit
+    orig_0.tx_0.tx_code = credit
+    recv_0.authorized_originators_0 = FALSE
+    recv_0.link_method_used_0 = none_auth
+    recv_0.authorized_originators_1 = FALSE
+    recv_0.link_method_used_1 = none_auth
+    recv_1.authorized_originators_0 = FALSE
+    recv_1.link_method_used_0 = none_auth
+    recv_1.authorized_originators_1 = FALSE
+    recv_1.link_method_used_1 = none_auth
+    orig_0.authorized_by_r0 = FALSE
+    orig_0.tx_0.receiver_id = 0
+    orig_0.tx_1.receiver_id = 0
+    orig_0.authorized_by_r1 = FALSE
+    orig_1.tx_0.receiver_id = 0
+    orig_1.tx_1.receiver_id = 0
+    orig_0.tx_0.originator_id = 0
+    orig_0.tx_0.is_reversal = FALSE
+    orig_0.tx_1.originator_id = 0
+    orig_0.tx_1.is_reversal = FALSE
+    orig_1.authorized_by_r0 = FALSE
+    orig_1.authorized_by_r1 = FALSE
+    orig_1.tx_0.originator_id = 1
+    orig_1.tx_0.is_reversal = FALSE
+    orig_1.tx_1.originator_id = 1
+    orig_1.tx_1.is_reversal = FALSE
+    odfi_i.batch_submitted = FALSE
+    odfi_i.entry_validated = FALSE
+    env_i.window_count = 0
+    orig_0.next_slot_id = 0
+    c_info.occupied = FALSE
+    c_info.sender = none_addr
+    c_info.payload_tx_id = 0
+    orig_0.reversing_target_local = 0
+    orig_0.tx_0.orig_account_type = checking
+    orig_0.tx_0.auth_method = none_auth
+    orig_0.auth_revoked_r0 = FALSE
+    orig_0.auth_revoked_r1 = FALSE
+    orig_0.tx_0.submitted_while_authorized = FALSE
+    orig_0.tx_0.card_posted = FALSE
+    orig_0.tx_1.orig_account_type = checking
+    orig_0.tx_1.auth_method = none_auth
+    orig_0.tx_1.submitted_while_authorized = FALSE
+    orig_0.tx_1.card_posted = FALSE
+    c_info.receiver = none_addr
+    orig_0.md_reinit_count = 0
+    orig_1.next_slot_id = 0
+    orig_1.reversing_target_local = 0
+    orig_1.tx_0.orig_account_type = checking
+    orig_1.tx_0.auth_method = none_auth
+    orig_1.auth_revoked_r0 = FALSE
+    orig_1.auth_revoked_r1 = FALSE
+    orig_1.tx_0.submitted_while_authorized = FALSE
+    orig_1.tx_0.card_posted = FALSE
+    orig_1.tx_1.orig_account_type = checking
+    orig_1.tx_1.auth_method = none_auth
+    orig_1.tx_1.submitted_while_authorized = FALSE
+    orig_1.tx_1.card_posted = FALSE
+    orig_1.md_reinit_count = 0
+    odfi_i.verify_method_for_tps = none_auth
+    orig_0.tx_0.sec_code = WEB
+    orig_0.tx_1.sec_code = WEB
+    orig_1.tx_0.sec_code = WEB
+    orig_1.tx_1.sec_code = WEB
+    odfi_i.u3_error_triggered = FALSE
+    odfi_i.u3_variant = u3_reject_batch
+    recv_0.target_originator = 0
+    recv_0.chosen_link_method = none_auth
+    orig_0.auth_method_used_r0 = none_auth
+    orig_1.auth_method_used_r0 = none_auth
+    recv_0.c_info_req_valid = FALSE
+    recv_1.c_info_req_valid = FALSE
+    odfi_i.c_info_req_valid = FALSE
+    ach_i.c_info_req_valid = FALSE
+    rdfi_i.c_info_req_valid = FALSE
+    recv_0.c_info_req_receiver = none_addr
+    recv_1.c_info_req_receiver = none_addr
+    odfi_i.c_info_req_receiver = none_addr
+    ach_i.c_info_req_receiver = none_addr
+    rdfi_i.c_info_req_receiver = none_addr
+    recv_0.c_info_req_payload_tx_id = 0
+    recv_1.c_info_req_payload_tx_id = 0
+    odfi_i.c_info_req_payload_tx_id = 0
+    ach_i.c_info_req_payload_tx_id = 0
+    rdfi_i.c_info_req_payload_tx_id = 0
+    recv_0.c_info_req_payload_auth_method = none_auth
+    recv_1.c_info_req_payload_auth_method = none_auth
+    odfi_i.c_info_req_payload_auth_method = none_auth
+    ach_i.c_info_req_payload_auth_method = none_auth
+    rdfi_i.c_info_req_payload_auth_method = none_auth
+    recv_1.target_originator = 0
+    recv_1.chosen_link_method = none_auth
+    orig_0.auth_method_used_r1 = none_auth
+    orig_1.auth_method_used_r1 = none_auth
+    orig_0.link_target_r = 0
+    orig_0.link_method = none_auth
+    orig_0.tx_0.revoked_during_pipeline = FALSE
+    odfi_i.u3_flag_entries = FALSE
+    orig_0.tx_1.revoked_during_pipeline = FALSE
+    odfi_i.c_dollar_req_valid = FALSE
+    ach_i.c_dollar_req_valid = FALSE
+    rdfi_i.c_dollar_req_valid = FALSE
+    orig_1.link_target_r = 0
+    odfi_i.c_dollar_req_receiver = none_addr
+    ach_i.c_dollar_req_receiver = none_addr
+    rdfi_i.c_dollar_req_receiver = none_addr
+    odfi_i.c_dollar_req_msg_type = none_msg
+    ach_i.c_dollar_req_msg_type = none_msg
+    rdfi_i.c_dollar_req_msg_type = none_msg
+    odfi_i.c_dollar_req_payload_tx_id = 0
+    ach_i.c_dollar_req_payload_tx_id = 0
+    rdfi_i.c_dollar_req_payload_tx_id = 0
+    odfi_i.c_dollar_req_amount = none_amt
+    ach_i.c_dollar_req_amount = none_amt
+    rdfi_i.c_dollar_req_amount = none_amt
+    orig_1.link_method = none_auth
+    orig_1.tx_0.revoked_during_pipeline = FALSE
+    orig_1.tx_1.revoked_during_pipeline = FALSE
+    c_info.payload_auth_method = none_auth
+    odfi_i.u3_batch_reject = FALSE
+    c_dollar.occupied = FALSE
+    recv_0.c_info_req_sender = r_0
+    recv_1.c_info_req_sender = r_1
+    odfi_i.c_info_req_sender = bo
+    odfi_i.c_dollar_req_sender = bo
+    ach_i.c_info_req_sender = a
+    ach_i.c_dollar_req_sender = a
+    rdfi_i.c_info_req_sender = br
+    rdfi_i.c_dollar_req_sender = br
+    c_dollar.sender = none_addr
+    c_dollar.receiver = none_addr
+    c_dollar.msg_type = none_msg
+    c_dollar.payload_tx_id = 0
+    c_dollar.amount = none_amt
+    resource_released_tx3 = FALSE
+    resource_released_tx2 = FALSE
+    resource_released_tx1 = FALSE
+    resource_released_tx0 = FALSE
+    phi1_ok_tx3 = TRUE
+    phi1_ok_tx2 = TRUE
+    phi1_ok_tx1 = TRUE
+    phi1_ok_tx0 = TRUE
+    phi1_authorized_tx3 = TRUE
+    phi1_authorized_tx2 = TRUE
+    phi1_authorized_tx1 = TRUE
+    phi1_authorized_tx0 = TRUE
+    phi1_rdfi_eligible_tx3 = FALSE
+    phi1_rdfi_eligible_tx2 = FALSE
+    phi1_rdfi_eligible_tx1 = FALSE
+    phi1_rdfi_eligible_tx0 = FALSE
+    env_i.return_window_expired = FALSE
+    env_i.return_window_started = FALSE
+    env_i.transfer_expired = FALSE
+    env_i.transfer_started = FALSE
+    env_i.settlement_expired = FALSE
+    env_i.settlement_started = FALSE
+    env_i.batch_expired = FALSE
+    env_i.batch_started = FALSE
+    env_i.Compromised_any = FALSE
+    recv_0.c_dollar_req_amount = none_amt
+    recv_0.c_dollar_req_payload_tx_id = 0
+    recv_0.c_dollar_req_msg_type = none_msg
+    recv_0.c_dollar_req_receiver = none_addr
+    recv_0.c_dollar_req_sender = r_0
+    recv_0.c_dollar_req_valid = FALSE
+    recv_0.grant_method_to_o1 = none_auth
+    recv_0.grant_method_to_o0 = none_auth
+    recv_0.revoke_to_o1 = FALSE
+    recv_0.revoke_to_o0 = FALSE
+    recv_0.grant_to_o1 = FALSE
+    recv_0.grant_to_o0 = FALSE
+    recv_0._target_addr = o_0
+    recv_0._sender_is_o1 = FALSE
+    recv_0._sender_is_o0 = FALSE
+    recv_0._inbound_link_ack = FALSE
+    recv_0._inbound_return_notice = FALSE
+    recv_0._inbound_verify_req = FALSE
+    recv_0._self = r_0
+    recv_1.c_dollar_req_amount = none_amt
+    recv_1.c_dollar_req_payload_tx_id = 0
+    recv_1.c_dollar_req_msg_type = none_msg
+    recv_1.c_dollar_req_receiver = none_addr
+    recv_1.c_dollar_req_sender = r_1
+    recv_1.c_dollar_req_valid = FALSE
+    recv_1.grant_method_to_o1 = none_auth
+    recv_1.grant_method_to_o0 = none_auth
+    recv_1.revoke_to_o1 = FALSE
+    recv_1.revoke_to_o0 = FALSE
+    recv_1.grant_to_o1 = FALSE
+    recv_1.grant_to_o0 = FALSE
+    recv_1._target_addr = o_0
+    recv_1._sender_is_o1 = FALSE
+    recv_1._sender_is_o0 = FALSE
+    recv_1._inbound_link_ack = FALSE
+    recv_1._inbound_return_notice = FALSE
+    recv_1._inbound_verify_req = FALSE
+    recv_1._self = r_1
+    orig_0.c_dollar_req_amount = none_amt
+    orig_0.c_dollar_req_payload_tx_id = 0
+    orig_0.c_dollar_req_msg_type = none_msg
+    orig_0.c_dollar_req_receiver = r_0
+    orig_0.c_dollar_req_sender = o_0
+    orig_0.c_dollar_req_valid = FALSE
+    orig_0.c_info_req_payload_auth_method = none_auth
+    orig_0.c_info_req_payload_return_code = none_rc
+    orig_0.c_info_req_payload_tx_id = 0
+    orig_0.c_info_req_msg_type = none_msg
+    orig_0.c_info_req_receiver = none_addr
+    orig_0.c_info_req_sender = o_0
+    orig_0.payment_to_r1_pending = FALSE
+    orig_0.payment_to_r0_pending = FALSE
+    orig_0.any_receiver_authorized = FALSE
+    orig_0.tx_1_auth_valid = FALSE
+    orig_0.tx_0_auth_valid = FALSE
+    orig_0.tx_1_mark_reversed = FALSE
+    orig_0.tx_0_mark_reversed = FALSE
+    orig_0.tx_1_reverses_target = 4
+    orig_0.tx_0_reverses_target = 4
+    orig_0.tx_1_is_reversal = FALSE
+    orig_0.tx_0_is_reversal = FALSE
+    orig_0.grant_method_from_r1 = none_auth
+    orig_0.grant_method_from_r0 = none_auth
+    orig_0.revoke_from_r1_now = FALSE
+    orig_0.revoke_from_r0_now = FALSE
+    orig_0.grant_from_r1_now = FALSE
+    orig_0.grant_from_r0_now = FALSE
+    orig_0.batch_ack_for_me = FALSE
+    orig_0.verify_ack_now = FALSE
+    orig_0.link_ack_from_bo = FALSE
+    orig_0.own_addr = o_0
+    orig_0.tx_0.reversal_window_open = FALSE
+    orig_0.tx_0.rdfi_return_for_me = FALSE
+    orig_0.tx_0.rdfi_settle_for_me = FALSE
+    orig_0.tx_0.op_reject_for_me = FALSE
+    orig_0.tx_0.op_forward_for_me = FALSE
+    orig_0.tx_0.return_notice_from_bo = FALSE
+    orig_0.tx_0.resource_available = FALSE
+    orig_0.tx_0.entry_settled = FALSE
+    orig_0.tx_0.tx_global_id = 0
+    orig_0.tx_1.reversal_window_open = FALSE
+    orig_0.tx_1.rdfi_return_for_me = FALSE
+    orig_0.tx_1.rdfi_settle_for_me = FALSE
+    orig_0.tx_1.op_reject_for_me = FALSE
+    orig_0.tx_1.op_forward_for_me = FALSE
+    orig_0.tx_1.return_notice_from_bo = FALSE
+    orig_0.tx_1.resource_available = FALSE
+    orig_0.tx_1.entry_settled = FALSE
+    orig_0.tx_1.tx_global_id = 1
+    orig_1.c_dollar_req_amount = none_amt
+    orig_1.c_dollar_req_payload_tx_id = 0
+    orig_1.c_dollar_req_msg_type = none_msg
+    orig_1.c_dollar_req_receiver = r_0
+    orig_1.c_dollar_req_sender = o_1
+    orig_1.c_dollar_req_valid = FALSE
+    orig_1.c_info_req_payload_auth_method = none_auth
+    orig_1.c_info_req_payload_return_code = none_rc
+    orig_1.c_info_req_payload_tx_id = 0
+    orig_1.c_info_req_msg_type = none_msg
+    orig_1.c_info_req_receiver = none_addr
+    orig_1.c_info_req_sender = o_1
+    orig_1.payment_to_r1_pending = FALSE
+    orig_1.payment_to_r0_pending = FALSE
+    orig_1.any_receiver_authorized = FALSE
+    orig_1.tx_1_auth_valid = FALSE
+    orig_1.tx_0_auth_valid = FALSE
+    orig_1.tx_1_mark_reversed = FALSE
+    orig_1.tx_0_mark_reversed = FALSE
+    orig_1.tx_1_reverses_target = 4
+    orig_1.tx_0_reverses_target = 4
+    orig_1.tx_1_is_reversal = FALSE
+    orig_1.tx_0_is_reversal = FALSE
+    orig_1.grant_method_from_r1 = none_auth
+    orig_1.grant_method_from_r0 = none_auth
+    orig_1.revoke_from_r1_now = FALSE
+    orig_1.revoke_from_r0_now = FALSE
+    orig_1.grant_from_r1_now = FALSE
+    orig_1.grant_from_r0_now = FALSE
+    orig_1.batch_ack_for_me = FALSE
+    orig_1.verify_ack_now = FALSE
+    orig_1.link_ack_from_bo = FALSE
+    orig_1.own_addr = o_1
+    orig_1.tx_0.reversal_window_open = FALSE
+    orig_1.tx_0.rdfi_return_for_me = FALSE
+    orig_1.tx_0.rdfi_settle_for_me = FALSE
+    orig_1.tx_0.op_reject_for_me = FALSE
+    orig_1.tx_0.op_forward_for_me = FALSE
+    orig_1.tx_0.return_notice_from_bo = FALSE
+    orig_1.tx_0.resource_available = FALSE
+    orig_1.tx_0.entry_settled = FALSE
+    orig_1.tx_0.tx_global_id = 2
+    orig_1.tx_1.reversal_window_open = FALSE
+    orig_1.tx_1.rdfi_return_for_me = FALSE
+    orig_1.tx_1.rdfi_settle_for_me = FALSE
+    orig_1.tx_1.op_reject_for_me = FALSE
+    orig_1.tx_1.op_forward_for_me = FALSE
+    orig_1.tx_1.return_notice_from_bo = FALSE
+    orig_1.tx_1.resource_available = FALSE
+    orig_1.tx_1.entry_settled = FALSE
+    orig_1.tx_1.tx_global_id = 3
+    odfi_i.last_tx_owner = none_addr
+    odfi_i.entry_would_validate = TRUE
+    odfi_i.entry_format_valid_by_enum = TRUE
+    odfi_i.cur_tx_amount = SMALL
+    odfi_i.cur_tx_tx_code = credit
+    odfi_i.cur_tx_sec_code = WEB
+    odfi_i.rx_link_req = FALSE
+    odfi_i.rx_return_notice = FALSE
+    odfi_i.rx_batch_ack = FALSE
+    odfi_i.rx_verify_req = FALSE
+    odfi_i.rx_payment_init = FALSE
+    odfi_i.rx_for_bo = FALSE
+    ach_i.fwd_is_reversal = FALSE
+    ach_i.fwd_amount = SMALL
+    ach_i.fwd_recv_acct_type = checking
+    ach_i.fwd_tx_code = credit
+    ach_i.fwd_receiver_id = 0
+    ach_i.fwd_tx_id = 0
+    ach_i.rcv_return_notice = FALSE
+    ach_i.rcv_batch_forward = FALSE
+    ach_i.any_tx_pending = FALSE
+    ach_i.any_tx_in_pipeline = FALSE
+    ach_i.any_tx_in_batch = FALSE
+    ach_i.tx3_in_batch = FALSE
+    ach_i.tx2_in_batch = FALSE
+    ach_i.tx1_in_batch = FALSE
+    ach_i.tx0_in_batch = FALSE
+    ach_i.tx_state_3 = not_submitted
+    ach_i.tx_state_2 = not_submitted
+    ach_i.tx_state_1 = not_submitted
+    ach_i.tx_state_0 = not_submitted
+    rdfi_i._any_in_pipeline = FALSE
+    rdfi_i._tx_id_for_payload = 0
+    rdfi_i._must_return = FALSE
+    rdfi_i._reversal_window_open = TRUE
+    rdfi_i._current_acct_status = FROZEN
+    rdfi_i._hand_recv = 0
+    rdfi_i._hand_code = credit
+    rdfi_i._tx_is_reversal = FALSE
+    rdfi_i._tx_amount = SMALL
+    rdfi_i._tx_recv_acct = checking
+    rdfi_i._tx_code = credit
+    rdfi_i._tx_receiver_id = 0
+    rdfi_i._tx_id = 0
+    rdfi_i._r1_state_changing = FALSE
+    rdfi_i._r0_state_changing = FALSE
+    rdfi_i._inbound_reversal = FALSE
+    rdfi_i._inbound_settlement = FALSE
+    g.n_submitted = 0
+    g.cycle_complete = FALSE
+    g.any_incycle = FALSE
+    g.tx3_in_pipeline = FALSE
+    g.tx2_in_pipeline = FALSE
+    g.tx1_in_pipeline = FALSE
+    g.tx0_in_pipeline = FALSE
+    g.regular_debit_incycle = FALSE
+    g.regular_credit_incycle = FALSE
+    g.micro_debit_incycle = FALSE
+    g.micro_credit_incycle = FALSE
+    g.tx3_incycle = FALSE
+    g.tx2_incycle = FALSE
+    g.tx1_incycle = FALSE
+    g.tx0_incycle = FALSE
+    g.n_debits_regular = 0
+    g.n_credits_regular = 0
+    g.regular_debit_presented = FALSE
+    g.regular_credit_presented = FALSE
+    g.micro_debit_presented = FALSE
+    g.micro_credit_presented = FALSE
+    g.tx3_presented = FALSE
+    g.tx2_presented = FALSE
+    g.tx1_presented = FALSE
+    g.tx0_presented = FALSE
+    g.n_debits_large = 0
+    g.n_debits_small = 0
+    g.n_debits_micro = 0
+    g.n_credits_large = 0
+    g.n_credits_small = 0
+    g.n_credits_micro = 0
+    g.tx3_settled = FALSE
+    g.tx2_settled = FALSE
+    g.tx1_settled = FALSE
+    g.tx0_settled = FALSE
+    g.tx3_amt = SMALL
+    g.tx2_amt = SMALL
+    g.tx1_amt = SMALL
+    g.tx0_amt = SMALL
+    g.tx3_code = credit
+    g.tx2_code = credit
+    g.tx1_code = credit
+    g.tx0_code = credit
+    g.tx3_state = not_submitted
+    g.tx2_state = not_submitted
+    g.tx1_state = not_submitted
+    g.tx0_state = not_submitted
+    orig_0.c_info_req_valid = FALSE
+    orig_0.tx_1_submit_now = FALSE
+    orig_0.tx_0_submit_now = FALSE
+    orig_1.c_info_req_valid = FALSE
+    orig_1.tx_1_submit_now = FALSE
+    orig_1.tx_0_submit_now = FALSE
+    ach_i.batch_has_violation = FALSE
+  -> Input: 1.2 <-
+    orig_0.link_choice = to_r0_manual
+    orig_1.link_choice = to_r0_manual
+    orig_0.submit_companion = FALSE
+    orig_1.submit_companion = FALSE
+    orig_0.link_req_pulse = FALSE
+    orig_1.link_req_pulse = FALSE
+    ach_i.u3_variant = variant_reject_batch
+    ach_i.env_tx_malformed_0 = FALSE
+    ach_i.env_tx_malformed_1 = FALSE
+    ach_i.env_tx_malformed_2 = FALSE
+    ach_i.env_tx_malformed_3 = FALSE
+  -> State: 1.2 <-
+    env_i.phase = ph_batch_open
+    recv_0.fsm_state = considering_revoke
+    orig_0.fsm_state = linking_manual
+    orig_1.fsm_state = linking_manual
+    recv_1.target_originator = 1
+    orig_0.link_method = manual_link
+    orig_1.link_method = manual_link
+    env_i.batch_started = TRUE
+    recv_0.revoke_to_o0 = TRUE
+    recv_1._target_addr = o_1
+    orig_0.c_info_req_payload_auth_method = manual_link
+    orig_0.c_info_req_msg_type = LINK_REQ
+    orig_0.c_info_req_receiver = bo
+    orig_0.revoke_from_r0_now = TRUE
+    orig_1.c_info_req_payload_auth_method = manual_link
+    orig_1.c_info_req_msg_type = LINK_REQ
+    orig_1.c_info_req_receiver = bo
+  -> Input: 1.3 <-
+    orig_0.link_choice = idle_choice
+    orig_1.link_choice = idle_choice
+  -> State: 1.3 <-
+    recv_0.fsm_state = auth_revoked_state
+    recv_0.c_info_req_msg_type = REVOKE_AUTH
+    recv_1.fsm_state = considering_revoke
+    orig_0.auth_revoked_r0 = TRUE
+    recv_0.c_info_req_valid = TRUE
+    recv_0.c_info_req_receiver = o_0
+    recv_0.revoke_to_o0 = FALSE
+    recv_1.revoke_to_o1 = TRUE
+    orig_0.revoke_from_r0_now = FALSE
+    orig_1.revoke_from_r1_now = TRUE
+    orig_0.c_info_req_valid = TRUE
+    orig_1.c_info_req_valid = TRUE
+  -> Input: 1.4 <-
+    orig_0.link_req_pulse = TRUE
+    orig_1.link_req_pulse = TRUE
+  -> State: 1.4 <-
+    recv_0.fsm_state = idle
+    recv_0.c_info_req_msg_type = none_msg
+    recv_1.fsm_state = auth_revoked_state
+    recv_1.c_info_req_msg_type = REVOKE_AUTH
+    c_info.msg_type = LINK_REQ
+    c_info.occupied = TRUE
+    c_info.sender = o_0
+    c_info.receiver = bo
+    orig_1.auth_revoked_r1 = TRUE
+    recv_0.c_info_req_valid = FALSE
+    recv_1.c_info_req_valid = TRUE
+    recv_0.c_info_req_receiver = none_addr
+    recv_1.c_info_req_receiver = o_1
+    c_info.payload_auth_method = manual_link
+    recv_0._sender_is_o0 = TRUE
+    recv_1.revoke_to_o1 = FALSE
+    recv_1._sender_is_o0 = TRUE
+    orig_1.revoke_from_r1_now = FALSE
+    odfi_i.rx_link_req = TRUE
+    odfi_i.rx_for_bo = TRUE
+  -> Input: 1.5 <-
+  -> State: 1.5 <-
+    recv_1.fsm_state = idle
+    recv_1.c_info_req_msg_type = none_msg
+    odfi_i.fsm_state = processing_link_req
+    odfi_i.last_link_requester = o_0
+    recv_0.target_originator = 1
+    recv_1.c_info_req_valid = FALSE
+    recv_1.c_info_req_receiver = none_addr
+    recv_0._target_addr = o_1
+    orig_0.c_info_req_valid = FALSE
+  -> Input: 1.6 <-
+    orig_0.link_req_pulse = FALSE
+  -> State: 1.6 <-
+    recv_0.fsm_state = considering_auth
+    recv_1.fsm_state = considering_revoke
+    odfi_i.fsm_state = idle
+    c_info.sender = o_1
+    recv_0.chosen_link_method = manual_link
+    recv_1.chosen_link_method = manual_link
+    recv_0.grant_method_to_o1 = manual_link
+    recv_0.grant_to_o1 = TRUE
+    recv_0._sender_is_o1 = TRUE
+    recv_0._sender_is_o0 = FALSE
+    recv_1.revoke_to_o1 = TRUE
+    recv_1._sender_is_o1 = TRUE
+    recv_1._sender_is_o0 = FALSE
+    orig_1.grant_method_from_r0 = manual_link
+    orig_1.revoke_from_r1_now = TRUE
+    orig_1.grant_from_r0_now = TRUE
+    orig_0.c_info_req_valid = TRUE
+  -> Input: 1.7 <-
+    orig_0.link_req_pulse = TRUE
+  -> State: 1.7 <-
+    recv_0.fsm_state = auth_granted
+    recv_0.c_info_req_msg_type = GRANT_AUTH
+    recv_1.fsm_state = auth_revoked_state
+    recv_1.c_info_req_msg_type = REVOKE_AUTH
+    odfi_i.fsm_state = processing_link_req
+    odfi_i.last_link_requester = o_1
+    recv_0.authorized_originators_1 = TRUE
+    recv_0.link_method_used_1 = manual_link
+    orig_1.authorized_by_r0 = TRUE
+    c_info.sender = o_0
+    orig_1.auth_method_used_r0 = manual_link
+    recv_0.c_info_req_valid = TRUE
+    recv_1.c_info_req_valid = TRUE
+    recv_0.c_info_req_receiver = o_1
+    recv_1.c_info_req_receiver = o_1
+    recv_0.c_info_req_payload_auth_method = manual_link
+    recv_0.grant_method_to_o1 = none_auth
+    recv_0.grant_to_o1 = FALSE
+    recv_0._sender_is_o1 = FALSE
+    recv_0._sender_is_o0 = TRUE
+    recv_1.revoke_to_o1 = FALSE
+    recv_1._sender_is_o1 = FALSE
+    recv_1._sender_is_o0 = TRUE
+    orig_1.any_receiver_authorized = TRUE
+    orig_1.tx_1_auth_valid = TRUE
+    orig_1.tx_0_auth_valid = TRUE
+    orig_1.grant_method_from_r0 = none_auth
+    orig_1.revoke_from_r1_now = FALSE
+    orig_1.grant_from_r0_now = FALSE
+  -> Input: 1.8 <-
+  -> State: 1.8 <-
+    recv_0.fsm_state = idle
+    recv_0.c_info_req_msg_type = none_msg
+    recv_1.fsm_state = idle
+    recv_1.c_info_req_msg_type = none_msg
+    odfi_i.fsm_state = link_acked
+    recv_0.c_info_req_valid = FALSE
+    recv_1.c_info_req_valid = FALSE
+    recv_0.c_info_req_receiver = none_addr
+    recv_1.c_info_req_receiver = none_addr
+    recv_0.c_info_req_payload_auth_method = none_auth
+  -> Input: 1.9 <-
+  -> State: 1.9 <-
+    recv_1.fsm_state = received_credit
+    odfi_i.fsm_state = idle
+    odfi_i.last_link_requester = none_addr
+    odfi_i.c_info_req_msg_type = LINK_ACK
+    recv_0.target_originator = 0
+    odfi_i.c_info_req_valid = TRUE
+    odfi_i.c_info_req_receiver = o_1
+    recv_1.target_originator = 0
+    recv_0._target_addr = o_0
+    recv_1._target_addr = o_0
+    orig_0.c_info_req_valid = FALSE
+    orig_1.c_info_req_valid = FALSE
+  -> Input: 1.10 <-
+    orig_0.link_req_pulse = FALSE
+    orig_1.link_req_pulse = FALSE
+  -> State: 1.10 <-
+    recv_0.fsm_state = account_state_changed
+    recv_1.fsm_state = idle
+    odfi_i.fsm_state = processing_link_req
+    odfi_i.last_link_requester = o_0
+    odfi_i.c_info_req_msg_type = none_msg
+    c_info.msg_type = LINK_ACK
+    c_info.sender = bo
+    c_info.receiver = o_1
+    odfi_i.c_info_req_valid = FALSE
+    odfi_i.c_info_req_receiver = none_addr
+    c_info.payload_auth_method = none_auth
+    recv_0._sender_is_o0 = FALSE
+    recv_1._sender_is_o0 = FALSE
+    orig_1.link_ack_from_bo = TRUE
+    odfi_i.rx_link_req = FALSE
+    odfi_i.rx_for_bo = FALSE
+    rdfi_i._r0_state_changing = TRUE
+    orig_0.c_info_req_valid = TRUE
+    orig_1.c_info_req_valid = TRUE
+  -> Input: 1.11 <-
+    orig_0.link_req_pulse = TRUE
+    orig_1.link_req_pulse = TRUE
+  -> State: 1.11 <-
+    recv_0.fsm_state = idle
+    recv_1.fsm_state = received_credit
+    orig_1.fsm_state = linked_ok
+    odfi_i.fsm_state = link_acked
+    c_info.msg_type = LINK_REQ
+    c_info.sender = o_0
+    c_info.receiver = bo
+    recv_0.c_info_req_valid = TRUE
+    recv_0.c_info_req_receiver = br
+    recv_1.chosen_link_method = none_auth
+    c_info.payload_auth_method = manual_link
+    recv_0._sender_is_o0 = TRUE
+    recv_1._sender_is_o0 = TRUE
+    orig_1.c_info_req_payload_auth_method = none_auth
+    orig_1.c_info_req_msg_type = none_msg
+    orig_1.c_info_req_receiver = none_addr
+    orig_1.link_ack_from_bo = FALSE
+    odfi_i.rx_link_req = TRUE
+    odfi_i.rx_for_bo = TRUE
+    rdfi_i._r0_state_changing = FALSE
+    orig_1.c_info_req_valid = FALSE
+  -> Input: 1.12 <-
+    orig_1.link_req_pulse = FALSE
+  -> State: 1.12 <-
+    recv_0.fsm_state = account_state_changed
+    recv_1.fsm_state = idle
+    odfi_i.fsm_state = idle
+    odfi_i.last_link_requester = none_addr
+    odfi_i.c_info_req_msg_type = LINK_ACK
+    recv_0.c_info_req_valid = FALSE
+    odfi_i.c_info_req_valid = TRUE
+    recv_0.c_info_req_receiver = none_addr
+    odfi_i.c_info_req_receiver = o_0
+    rdfi_i._r0_state_changing = TRUE
+    orig_0.c_info_req_valid = FALSE
+  -> Input: 1.13 <-
+    orig_0.link_req_pulse = FALSE
+  -> State: 1.13 <-
+    recv_0.fsm_state = idle
+    recv_1.fsm_state = considering_revoke
+    orig_1.fsm_state = initiating_payment
+    odfi_i.fsm_state = processing_link_req
+    odfi_i.last_link_requester = o_0
+    odfi_i.c_info_req_msg_type = none_msg
+    c_info.msg_type = LINK_ACK
+    c_info.sender = bo
+    c_info.receiver = o_0
+    recv_0.c_info_req_valid = TRUE
+    odfi_i.c_info_req_valid = FALSE
+    recv_0.c_info_req_receiver = br
+    odfi_i.c_info_req_receiver = none_addr
+    recv_1.target_originator = 1
+    c_info.payload_auth_method = none_auth
+    recv_0._sender_is_o0 = FALSE
+    recv_1.revoke_to_o1 = TRUE
+    recv_1._target_addr = o_1
+    recv_1._sender_is_o0 = FALSE
+    orig_0.link_ack_from_bo = TRUE
+    orig_1.c_info_req_payload_tx_id = 2
+    orig_1.c_info_req_msg_type = PAYMENT_INIT
+    orig_1.c_info_req_receiver = bo
+    orig_1.revoke_from_r1_now = TRUE
+    odfi_i.rx_link_req = FALSE
+    odfi_i.rx_for_bo = FALSE
+    rdfi_i._r0_state_changing = FALSE
+    orig_1.c_info_req_valid = TRUE
+    orig_1.tx_1_submit_now = TRUE
+    orig_1.tx_0_submit_now = TRUE
+  -> Input: 1.14 <-
+    orig_1.submit_companion = TRUE
+  -> State: 1.14 <-
+    env_i.phase = ph_batch_closed
+    recv_0.fsm_state = considering_revoke
+    recv_1.fsm_state = auth_revoked_state
+    recv_1.c_info_req_msg_type = REVOKE_AUTH
+    orig_0.fsm_state = linked_ok
+    orig_1.tx_0.amount = MICRO
+    orig_1.tx_1.amount = MICRO
+    orig_1.tx_count = 2
+    orig_1.fsm_state = payment_submitted
+    odfi_i.fsm_state = idle
+    c_info.msg_type = PAYMENT_INIT
+    orig_1.tx_0.payment_state = submitted
+    orig_1.tx_1.payment_state = submitted
+    orig_1.tx_0.tx_code = debit
+    env_i.window_count = 1
+    c_info.sender = o_1
+    c_info.payload_tx_id = 2
+    c_info.receiver = bo
+    orig_1.tx_0.auth_method = manual_link
+    orig_1.tx_0.submitted_while_authorized = TRUE
+    orig_1.tx_1.auth_method = manual_link
+    orig_1.tx_1.submitted_while_authorized = TRUE
+    recv_0.chosen_link_method = none_auth
+    recv_0.c_info_req_valid = FALSE
+    recv_1.c_info_req_valid = TRUE
+    recv_0.c_info_req_receiver = none_addr
+    recv_1.c_info_req_receiver = o_1
+    env_i.batch_expired = TRUE
+    recv_0.revoke_to_o0 = TRUE
+    recv_0._sender_is_o1 = TRUE
+    recv_1.revoke_to_o1 = FALSE
+    recv_1._sender_is_o1 = TRUE
+    orig_0.c_info_req_payload_auth_method = none_auth
+    orig_0.c_info_req_msg_type = none_msg
+    orig_0.c_info_req_receiver = none_addr
+    orig_0.revoke_from_r0_now = TRUE
+    orig_0.link_ack_from_bo = FALSE
+    orig_1.c_info_req_payload_tx_id = 0
+    orig_1.c_info_req_msg_type = none_msg
+    orig_1.c_info_req_receiver = none_addr
+    orig_1.payment_to_r0_pending = TRUE
+    orig_1.revoke_from_r1_now = FALSE
+    odfi_i.cur_tx_amount = MICRO
+    odfi_i.cur_tx_tx_code = debit
+    odfi_i.rx_payment_init = TRUE
+    odfi_i.rx_for_bo = TRUE
+    ach_i.tx_state_3 = submitted
+    ach_i.tx_state_2 = submitted
+    g.n_submitted = 2
+    g.any_incycle = TRUE
+    g.tx3_in_pipeline = TRUE
+    g.tx2_in_pipeline = TRUE
+    g.micro_debit_incycle = TRUE
+    g.micro_credit_incycle = TRUE
+    g.tx3_incycle = TRUE
+    g.tx2_incycle = TRUE
+    g.tx3_amt = MICRO
+    g.tx2_amt = MICRO
+    g.tx2_code = debit
+    g.tx3_state = submitted
+    g.tx2_state = submitted
+    orig_1.c_info_req_valid = FALSE
+    orig_1.tx_1_submit_now = FALSE
+    orig_1.tx_0_submit_now = FALSE
+  -> Input: 1.15 <-
+    orig_1.submit_companion = FALSE
+  -> State: 1.15 <-
+    recv_0.fsm_state = auth_revoked_state
+    recv_0.c_info_req_msg_type = REVOKE_AUTH
+    recv_1.fsm_state = idle
+    recv_1.c_info_req_msg_type = none_msg
+    odfi_i.fsm_state = validating_entry
+    odfi_i.last_processed_tx_id = 2
+    c_info.msg_type = REVOKE_AUTH
+    orig_1.tx_0.payment_state = batched
+    orig_1.tx_1.payment_state = batched
+    c_info.sender = r_1
+    c_info.payload_tx_id = 0
+    c_info.receiver = o_1
+    odfi_i.u3_error_triggered = TRUE
+    odfi_i.u3_variant = u3_accept_flag
+    recv_0.c_info_req_valid = TRUE
+    recv_1.c_info_req_valid = FALSE
+    recv_0.c_info_req_receiver = o_0
+    recv_1.c_info_req_receiver = none_addr
+    recv_0.revoke_to_o0 = FALSE
+    recv_0._sender_is_o1 = FALSE
+    recv_1._sender_is_o1 = FALSE
+    orig_0.revoke_from_r0_now = FALSE
+    orig_1.tx_0.entry_settled = TRUE
+    odfi_i.last_tx_owner = o_1
+    odfi_i.cur_tx_amount = SMALL
+    odfi_i.cur_tx_tx_code = credit
+    odfi_i.rx_payment_init = FALSE
+    odfi_i.rx_for_bo = FALSE
+    ach_i.fwd_amount = MICRO
+    ach_i.fwd_tx_code = debit
+    ach_i.fwd_tx_id = 2
+    ach_i.any_tx_in_pipeline = TRUE
+    ach_i.any_tx_in_batch = TRUE
+    ach_i.tx3_in_batch = TRUE
+    ach_i.tx2_in_batch = TRUE
+    ach_i.tx_state_3 = batched
+    ach_i.tx_state_2 = batched
+    rdfi_i._any_in_pipeline = TRUE
+    rdfi_i._tx_amount = MICRO
+    rdfi_i._tx_code = debit
+    rdfi_i._tx_id = 2
+    g.n_submitted = 0
+    g.tx3_state = batched
+    g.tx2_state = batched
+    ach_i.batch_has_violation = TRUE
+  -> Input: 1.16 <-
+    ach_i.env_tx_malformed_2 = TRUE
+  -> State: 1.16 <-
+    recv_0.fsm_state = idle
+    recv_0.c_info_req_msg_type = none_msg
+    odfi_i.fsm_state = validation_ok
+    ach_i.fsm_state = routing_to_rdfi
+    ach_i.c_info_req_msg_type = SETTLEMENT_REQ
+    odfi_i.entry_validated = TRUE
+    c_info.sender = r_0
+    c_info.receiver = o_0
+    recv_0.c_info_req_valid = FALSE
+    ach_i.c_info_req_valid = TRUE
+    recv_0.c_info_req_receiver = none_addr
+    ach_i.c_info_req_receiver = br
+    odfi_i.c_info_req_payload_tx_id = 2
+    ach_i.c_info_req_payload_tx_id = 2
+    odfi_i.u3_flag_entries = TRUE
+  -> Input: 1.17 <-
+  -> State: 1.17 <-
+    recv_0.fsm_state = received_credit
+    recv_1.fsm_state = considering_revoke
+    odfi_i.fsm_state = batch_collecting
+    ach_i.fsm_state = forwarded_ack
+    ach_i.c_info_req_msg_type = BATCH_ACK
+    c_info.msg_type = SETTLEMENT_REQ
+    c_info.sender = a
+    c_info.payload_tx_id = 2
+    c_info.receiver = br
+    odfi_i.u3_error_triggered = FALSE
+    ach_i.c_info_req_receiver = bo
+    recv_1.revoke_to_o1 = TRUE
+    orig_1.revoke_from_r1_now = TRUE
+    orig_1.tx_0.op_forward_for_me = TRUE
+    odfi_i.cur_tx_amount = MICRO
+    odfi_i.cur_tx_tx_code = debit
+    rdfi_i._inbound_settlement = TRUE
+  -> Input: 1.18 <-
+  -> State: 1.18 <-
+    recv_0.fsm_state = idle
+    recv_1.fsm_state = auth_revoked_state
+    recv_1.c_info_req_msg_type = REVOKE_AUTH
+    odfi_i.fsm_state = batch_forwarded
+    odfi_i.c_info_req_msg_type = BATCH_FORWARD
+    ach_i.fsm_state = idle
+    ach_i.c_info_req_msg_type = none_msg
+    rdfi_i.fsm_state = receiving_settlement
+    rdfi_i.last_processed_tx_id = 2
+    c_info.msg_type = BATCH_ACK
+    orig_1.tx_0.payment_state = pending_settlement
+    odfi_i.batch_submitted = TRUE
+    c_info.receiver = bo
+    recv_1.c_info_req_valid = TRUE
+    odfi_i.c_info_req_valid = TRUE
+    ach_i.c_info_req_valid = FALSE
+    recv_1.c_info_req_receiver = o_1
+    odfi_i.c_info_req_receiver = a
+    ach_i.c_info_req_receiver = none_addr
+    recv_1.revoke_to_o1 = FALSE
+    orig_1.revoke_from_r1_now = FALSE
+    orig_1.tx_0.op_forward_for_me = FALSE
+    odfi_i.rx_batch_ack = TRUE
+    odfi_i.rx_for_bo = TRUE
+    ach_i.fwd_tx_code = credit
+    ach_i.fwd_tx_id = 3
+    ach_i.any_tx_pending = TRUE
+    ach_i.tx2_in_batch = FALSE
+    ach_i.tx_state_2 = pending_settlement
+    rdfi_i._tx_id_for_payload = 2
+    rdfi_i._must_return = TRUE
+    rdfi_i._hand_code = debit
+    rdfi_i._tx_code = credit
+    rdfi_i._tx_id = 3
+    rdfi_i._inbound_settlement = FALSE
+    g.micro_debit_presented = TRUE
+    g.tx2_presented = TRUE
+    g.tx2_state = pending_settlement
+  -> Input: 1.19 <-
+    ach_i.env_tx_malformed_2 = FALSE
+    ach_i.env_tx_malformed_3 = TRUE
+  -> State: 1.19 <-
+    recv_0.fsm_state = considering_revoke
+    recv_1.fsm_state = idle
+    recv_1.c_info_req_msg_type = none_msg
+    odfi_i.fsm_state = awaiting_operator_ack
+    odfi_i.c_info_req_msg_type = none_msg
+    rdfi_i.fsm_state = data_acceptance_check
+    c_info.msg_type = REVOKE_AUTH
+    c_info.sender = r_1
+    c_info.payload_tx_id = 0
+    c_info.receiver = o_1
+    recv_1.c_info_req_valid = FALSE
+    odfi_i.c_info_req_valid = FALSE
+    recv_1.c_info_req_receiver = none_addr
+    odfi_i.c_info_req_receiver = none_addr
+    ach_i.c_info_req_payload_tx_id = 3
+    rdfi_i.c_info_req_payload_tx_id = 2
+    rdfi_i.c_dollar_req_payload_tx_id = 2
+    recv_0.revoke_to_o0 = TRUE
+    orig_0.revoke_from_r0_now = TRUE
+    odfi_i.cur_tx_amount = SMALL
+    odfi_i.cur_tx_tx_code = credit
+    odfi_i.rx_batch_ack = FALSE
+    odfi_i.rx_for_bo = FALSE
+  -> Input: 1.20 <-
+  -> State: 1.20 <-
+    recv_0.fsm_state = auth_revoked_state
+    recv_0.c_info_req_msg_type = REVOKE_AUTH
+    recv_1.fsm_state = considering_revoke
+    rdfi_i.fsm_state = accepted
+    c_info.msg_type = none_msg
+    c_info.occupied = FALSE
+    c_info.sender = none_addr
+    c_info.receiver = none_addr
+    recv_0.c_info_req_valid = TRUE
+    recv_0.c_info_req_receiver = o_0
+    recv_1.chosen_link_method = manual_link
+    recv_0.revoke_to_o0 = FALSE
+    recv_1.revoke_to_o1 = TRUE
+    orig_0.revoke_from_r0_now = FALSE
+    orig_1.revoke_from_r1_now = TRUE
+  -> Input: 1.21 <-
+  -> State: 1.21 <-
+    recv_0.fsm_state = idle
+    recv_0.c_info_req_msg_type = none_msg
+    recv_1.fsm_state = auth_revoked_state
+    recv_1.c_info_req_msg_type = REVOKE_AUTH
+    rdfi_i.fsm_state = account_lookup
+    c_info.msg_type = REVOKE_AUTH
+    c_info.occupied = TRUE
+    c_info.sender = r_0
+    c_info.receiver = o_0
+    recv_0.c_info_req_valid = FALSE
+    recv_1.c_info_req_valid = TRUE
+    recv_0.c_info_req_receiver = none_addr
+    recv_1.c_info_req_receiver = o_1
+    recv_1.revoke_to_o1 = FALSE
+    orig_1.revoke_from_r1_now = FALSE
+  -> Input: 1.22 <-
+  -> State: 1.22 <-
+    recv_0.fsm_state = received_credit
+    recv_1.fsm_state = idle
+    recv_1.c_info_req_msg_type = none_msg
+    orig_0.fsm_state = idle
+    rdfi_i.fsm_state = processing_debit
+    c_info.sender = r_1
+    c_info.receiver = o_1
+    recv_1.c_info_req_valid = FALSE
+    recv_1.c_info_req_receiver = none_addr
+  -> Input: 1.23 <-
+    orig_0.link_choice = to_r1_manual
+  -> State: 1.23 <-
+    env_i.phase = ph_settling
+    recv_0.fsm_state = idle
+    orig_0.fsm_state = linking_manual
+    rdfi_i.fsm_state = returning
+    rdfi_i.selected_return_code = R16
+    c_info.msg_type = none_msg
+    c_info.occupied = FALSE
+    c_info.sender = none_addr
+    c_info.receiver = none_addr
+    recv_1.target_originator = 0
+    orig_0.link_target_r = 1
+    env_i.settlement_started = TRUE
+    recv_1._target_addr = o_0
+    orig_0.c_dollar_req_receiver = r_1
+    orig_0.c_info_req_payload_auth_method = manual_link
+    orig_0.c_info_req_msg_type = LINK_REQ
+    orig_0.c_info_req_receiver = bo
+    orig_0.c_info_req_valid = TRUE
+  -> Input: 1.24 <-
+    orig_0.link_choice = idle_choice
+    orig_0.link_req_pulse = TRUE
+  -> State: 1.24 <-
+    env_i.phase = ph_settle_closed
+    recv_0.fsm_state = considering_auth
+    recv_1.fsm_state = considering_revoke
+    rdfi_i.fsm_state = post_return_idle
+    rdfi_i.c_info_req_msg_type = RETURN_NOTICE
+    rdfi_i.c_info_req_payload_return_code = R16
+    c_info.msg_type = LINK_REQ
+    c_info.occupied = TRUE
+    c_info.sender = o_0
+    c_info.receiver = bo
+    recv_0.chosen_link_method = manual_link
+    rdfi_i.c_info_req_valid = TRUE
+    rdfi_i.c_info_req_receiver = a
+    c_info.payload_auth_method = manual_link
+    env_i.settlement_expired = TRUE
+    recv_0.grant_method_to_o0 = manual_link
+    recv_0.grant_to_o0 = TRUE
+    recv_0._sender_is_o0 = TRUE
+    recv_1.revoke_to_o0 = TRUE
+    recv_1._sender_is_o0 = TRUE
+    orig_0.grant_method_from_r0 = manual_link
+    orig_0.revoke_from_r1_now = TRUE
+    orig_0.grant_from_r0_now = TRUE
+    odfi_i.rx_link_req = TRUE
+    odfi_i.rx_for_bo = TRUE
+    orig_0.c_info_req_valid = FALSE
+    ach_i.batch_has_violation = FALSE
+  -> Input: 1.25 <-
+    orig_0.link_req_pulse = FALSE
+    ach_i.env_tx_malformed_3 = FALSE
+  -> State: 1.25 <-
+    recv_0.fsm_state = auth_granted
+    recv_0.c_info_req_msg_type = GRANT_AUTH
+    recv_1.fsm_state = auth_revoked_state
+    recv_1.c_info_req_msg_type = REVOKE_AUTH
+    rdfi_i.fsm_state = idle
+    rdfi_i.c_info_req_msg_type = none_msg
+    rdfi_i.c_info_req_payload_return_code = none_rc
+    c_info.msg_type = RETURN_NOTICE
+    c_info.payload_return_code = R16
+    recv_0.authorized_originators_0 = TRUE
+    recv_0.link_method_used_0 = manual_link
+    orig_0.authorized_by_r0 = TRUE
+    c_info.sender = br
+    c_info.payload_tx_id = 2
+    orig_0.auth_revoked_r0 = FALSE
+    orig_0.auth_revoked_r1 = TRUE
+    c_info.receiver = a
+    orig_0.auth_method_used_r0 = manual_link
+    recv_0.c_info_req_valid = TRUE
+    recv_1.c_info_req_valid = TRUE
+    rdfi_i.c_info_req_valid = FALSE
+    recv_0.c_info_req_receiver = o_0
+    recv_1.c_info_req_receiver = o_0
+    rdfi_i.c_info_req_receiver = none_addr
+    recv_0.c_info_req_payload_auth_method = manual_link
+    c_info.payload_auth_method = none_auth
+    recv_0.grant_method_to_o0 = none_auth
+    recv_0.grant_to_o0 = FALSE
+    recv_0._sender_is_o0 = FALSE
+    recv_1.revoke_to_o0 = FALSE
+    recv_1._sender_is_o0 = FALSE
+    orig_0.any_receiver_authorized = TRUE
+    orig_0.tx_1_auth_valid = TRUE
+    orig_0.tx_0_auth_valid = TRUE
+    orig_0.grant_method_from_r0 = none_auth
+    orig_0.revoke_from_r1_now = FALSE
+    orig_0.grant_from_r0_now = FALSE
+    orig_1.tx_0.rdfi_return_for_me = TRUE
+    odfi_i.cur_tx_amount = MICRO
+    odfi_i.cur_tx_tx_code = debit
+    odfi_i.rx_link_req = FALSE
+    odfi_i.rx_for_bo = FALSE
+    ach_i.rcv_return_notice = TRUE
+    orig_0.c_info_req_valid = TRUE
+  -> Input: 1.26 <-
+    orig_0.link_req_pulse = TRUE
+  -> State: 1.26 <-
+    recv_0.fsm_state = idle
+    recv_0.c_info_req_msg_type = none_msg
+    recv_1.fsm_state = idle
+    recv_1.c_info_req_msg_type = none_msg
+    orig_1.tx_0.return_code = R16
+    ach_i.fsm_state = return_processing
+    ach_i.c_info_req_msg_type = RETURN_NOTICE
+    ach_i.c_info_req_payload_return_code = R16
+    rdfi_i.selected_return_code = none_rc
+    c_info.msg_type = LINK_REQ
+    c_info.payload_return_code = none_rc
+    orig_1.tx_0.payment_state = returned
+    c_info.sender = o_0
+    c_info.payload_tx_id = 0
+    c_info.receiver = bo
+    recv_0.c_info_req_valid = FALSE
+    recv_1.c_info_req_valid = FALSE
+    ach_i.c_info_req_valid = TRUE
+    recv_0.c_info_req_receiver = none_addr
+    recv_1.c_info_req_receiver = none_addr
+    ach_i.c_info_req_receiver = bo
+    recv_0.c_info_req_payload_auth_method = none_auth
+    c_info.payload_auth_method = manual_link
+    phi1_ok_tx2 = FALSE
+    phi1_authorized_tx2 = FALSE
+    recv_0._sender_is_o0 = TRUE
+    recv_1._sender_is_o0 = TRUE
+    orig_1.tx_0.rdfi_return_for_me = FALSE
+    odfi_i.cur_tx_amount = SMALL
+    odfi_i.cur_tx_tx_code = credit
+    odfi_i.rx_link_req = TRUE
+    odfi_i.rx_for_bo = TRUE
+    ach_i.rcv_return_notice = FALSE
+    ach_i.any_tx_pending = FALSE
+    ach_i.tx_state_2 = returned
+    g.tx2_in_pipeline = FALSE
+    g.tx2_state = returned
+Quitting the GR commands... 
+Quitting the param addon... 
+Quitting the kltl addon... 
+Quitting Trace Property Set (CTP) package... 
+Quitting the hasdel addon... 
+Quitting the Trace_Executor package... 
+Quitting the Sym2ex package... 
+Quitting the Abstraction package...
+Quitting the AbsBmc package...
+Quitting the QE package...
+Quitting the Cores package... 
+Quitting the Cegar package...
+Quitting the Mathsat package...
+Quitting the Invgen package... 
+Quitting the GR package... 
+Quitting the BaPsl package... 
+Quitting the Automata package... 
+Quitting the Compass package... 
+Quitting the BMC package... 
+Resetting the SBMC module...
+Done 
+Done 
+Forcing destruction of previoulsy created BOOL FSM...
+Forcing destruction of previoulsy created SEXP FSM...
+
+Successful termination
