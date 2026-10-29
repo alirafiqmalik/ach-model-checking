@@ -1,0 +1,51 @@
+make: Entering directory '/home/ahm/Desktop/project/artifacts-eval/acm-ccs-ach-payments/eval_review/source-ach-model-checking'
+make: Nothing to be done for 'merge'.
+cat models/00_types_channels.smv models/10_originator.smv models/20_odfi.smv models/30_ach_operator.smv models/40_rdfi.smv models/50_receiver.smv models/60_global_constraints.smv models/99_main.smv | diff -u - /home/ahm/Desktop/project/artifacts-eval/acm-ccs-ach-payments/eval_review/source-ach-model-checking/output/_main_model.smv
+make: Leaving directory '/home/ahm/Desktop/project/artifacts-eval/acm-ccs-ach-payments/eval_review/source-ach-model-checking'
+Phi2 engine: bmc (BMC bound: 60)
+Invar indices from show_property: 37 38 39 (log spec-i-INV.log is the i-th Invar; check_invar_ic3 -n uses the unified index)
+CTL properties: 37 (BMC of !(p), k=50)
+=== summary ===
+[0 INV] -- invariant (((phi1_ok_tx0 & phi1_ok_tx1) & phi1_ok_tx2) & phi1_ok_tx3)  is false
+[1 INV] -- invariant (((orig_0.verification_cycle_complete -> orig_0.verification_credits = orig_0.verification_debits) & (orig_1.verification_cycle_complete -> orig_1.verification_credits = orig_1.verification_debits)) & (g.cycle_complete -> g.n_credits_regular = g.n_debits_regular))   is false
+[2 INV] -- invariant ((((resource_released_tx0 -> env_i.return_window_expired) & (resource_released_tx1 -> env_i.return_window_expired)) & (resource_released_tx2 -> env_i.return_window_expired)) & (resource_released_tx3 -> env_i.return_window_expired))  is false
+[0 CTL] -- invariant !(orig_0.fsm_state = linked_ok)   is false
+[1 CTL] -- invariant !(orig_0.fsm_state = link_failed)   is false
+[2 CTL] -- invariant !(orig_0.md_state = md_confirmed)   is false
+[3 CTL] -- invariant !(orig_0.md_state = md_failed)   is false
+[4 CTL] -- invariant !(orig_0.tx_0.payment_state = rejected)   is false
+[5 CTL] -- invariant !(orig_0.tx_0.payment_state = returned)   is false
+[6 CTL] -- invariant !(orig_0.tx_0.payment_state = reversed)   is true
+[7 CTL] -- invariant !(orig_0.fsm_state = reversing)   is false
+[8 CTL] -- invariant !(recv_0.fsm_state = auth_granted)   is false
+[9 CTL] -- invariant !(recv_0.fsm_state = auth_revoked_state)   is false
+[10 CTL] (no verdict; inspect /home/ahm/Desktop/project/artifacts-eval/acm-ccs-ach-payments/eval_review/source-ach-model-checking/output/local-run-20261029-201918/spec-10-CTL.log)
+[11 CTL] (no verdict; inspect /home/ahm/Desktop/project/artifacts-eval/acm-ccs-ach-payments/eval_review/source-ach-model-checking/output/local-run-20261029-201918/spec-11-CTL.log)
+[12 CTL] -- invariant !(recv_0.fsm_state = notified_return)   is true
+[13 CTL] -- invariant !(recv_0.fsm_state = account_state_changed)   is false
+[14 CTL] -- invariant !(odfi_i.fsm_state = tps_verified)   is true
+[15 CTL] (no verdict; inspect /home/ahm/Desktop/project/artifacts-eval/acm-ccs-ach-payments/eval_review/source-ach-model-checking/output/local-run-20261029-201918/spec-15-CTL.log)
+[16 CTL] -- invariant !(odfi_i.fsm_state = validation_rejected)   is false
+[17 CTL] -- invariant !(odfi_i.fsm_state = operator_acked)   is false
+[18 CTL] -- invariant !(odfi_i.fsm_state = link_acked)   is false
+[19 CTL] -- invariant !odfi_i.u3_batch_reject   is false
+[20 CTL] -- invariant !odfi_i.u3_flag_entries   is false
+[21 CTL] -- invariant !(ach_i.fsm_state = data_rejected_batch)   is false
+[22 CTL] -- invariant !(ach_i.fsm_state = data_rejected_entry)   is false
+[23 CTL] -- invariant !(ach_i.fsm_state = forwarded_ack)   is false
+[24 CTL] -- invariant !(rdfi_i.fsm_state = settled_state)   is false
+[25 CTL] -- invariant !(rdfi_i.fsm_state = returning)   is false
+[26 CTL] -- invariant !(rdfi_i.fsm_state = reversed_state)   is true
+[27 CTL] -- invariant !(rdfi_i.selected_return_code = R16)   is false
+[28 CTL] (no verdict; inspect /home/ahm/Desktop/project/artifacts-eval/acm-ccs-ach-payments/eval_review/source-ach-model-checking/output/local-run-20261029-201918/spec-28-CTL.log)
+[29 CTL] -- invariant !(env_i.window_count = 3)   is false
+[30 CTL] -- invariant !(env_i.phase = ph_return_closed)   is false
+[31 CTL] -- invariant !(g.n_credits_micro > 0)   is false
+[32 CTL] -- invariant !(g.n_credits_small > 0)   is false
+[33 CTL] -- invariant !(g.n_credits_large > 0)   is false
+[34 CTL] -- invariant !(g.n_debits_micro > 0)   is false
+[35 CTL] -- invariant !(g.n_debits_small > 0)   is false
+[36 CTL] -- invariant !(g.n_debits_large > 0)   is false
+logs: /home/ahm/Desktop/project/artifacts-eval/acm-ccs-ach-payments/eval_review/source-ach-model-checking/output/local-run-20261029-201918/spec-*-INV.log /home/ahm/Desktop/project/artifacts-eval/acm-ccs-ach-payments/eval_review/source-ach-model-checking/output/local-run-20261029-201918/spec-*-CTL.log
+Wrote /home/ahm/Desktop/project/artifacts-eval/acm-ccs-ach-payments/eval_review/source-ach-model-checking/output/local-run-20261029-201918/model_stats.md
+Done. Artifacts -> /home/ahm/Desktop/project/artifacts-eval/acm-ccs-ach-payments/eval_review/source-ach-model-checking/output/local-run-20261029-201918

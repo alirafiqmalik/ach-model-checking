@@ -1,0 +1,8 @@
+set on_failure_script_quits
+read_model -i /home/ahm/Desktop/project/artifacts-eval/acm-ccs-ach-payments/eval_review/source-ach-model-checking/output/_main_model.smv
+flatten_hierarchy
+encode_variables
+build_boolean_model
+go_bmc
+check_invar_bmc -a een-sorensson -p "!(recv_0.fsm_state = notified_return)" -k 50
+quit
