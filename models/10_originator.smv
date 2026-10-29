@@ -28,12 +28,15 @@ MODULE transaction_slot(owner_oid, local_id,
                         c_info, env,
                         submit_now, submit_is_reversal,
                         reverses_target_tx, mark_reversed_now,
-                        auth_valid_for_receiver)
+                        auth_valid_for_receiver, verification_submit, verification_target)
 
 VAR
   -- Payment lifecycle
   payment_state : {not_submitted, submitted, batched, pending_settlement,
                    settled, rejected, returned, reversed};
+
+  -- Whether this slot belongs to the provider's verification pair.
+  verification_entry : boolean;
 
   -- Static identity
   originator_id : 0..1;                        -- equals owner_oid (INVAR)
@@ -138,6 +141,7 @@ DEFINE
 
 ASSIGN
   -- Initial values
+  init(verification_entry) := FALSE;
   init(payment_state)     := not_submitted;
   init(originator_id)     := owner_oid;
   init(receiver_id)       := 0;
@@ -194,14 +198,24 @@ ASSIGN
   -- originator_id frozen at init
   next(originator_id) := originator_id;
 
+  next(verification_entry) := case
+    payment_state = not_submitted & submit_now : verification_submit;
+    TRUE : verification_entry;
+  esac;
+
+  -- Verification entries use the provider's selected target and MICRO class.
+  -- The first slot is the deposit, the second its recovery debit.
   -- Adversarial nondet latches on submit. Picked from the finite
   -- domain (A-3/A-4), then frozen for the slot's lifetime.
   next(receiver_id) := case
+    payment_state = not_submitted & submit_now & verification_submit : verification_target;
     payment_state = not_submitted & submit_now : {0, 1};
     TRUE                                       : receiver_id;
   esac;
 
   next(tx_code) := case
+    payment_state = not_submitted & submit_now & verification_submit & local_id = 0 : credit;
+    payment_state = not_submitted & submit_now & verification_submit : debit;
     payment_state = not_submitted & submit_now : {debit, credit};
     TRUE                                       : tx_code;
   esac;
@@ -217,6 +231,7 @@ ASSIGN
   esac;
 
   next(amount) := case
+    payment_state = not_submitted & submit_now & verification_submit : MICRO;
     payment_state = not_submitted & submit_now : {MICRO, SMALL, LARGE};
     TRUE                                       : amount;
   esac;
@@ -329,17 +344,20 @@ VAR
   tx_0 : transaction_slot(id, 0, c_info, env,
                           tx_0_submit_now, tx_0_is_reversal,
                           tx_0_reverses_target, tx_0_mark_reversed,
-                          tx_0_auth_valid);
+                          tx_0_auth_valid, verification_submit, link_target_r);
   tx_1 : transaction_slot(id, 1, c_info, env,
                           tx_1_submit_now, tx_1_is_reversal,
                           tx_1_reverses_target, tx_1_mark_reversed,
-                          tx_1_auth_valid);
+                          tx_1_auth_valid, verification_submit, link_target_r);
+
+  -- History of successful linkage for the account in this verification pair.
+  verification_linked : boolean;
 
   -- Submission counter.
   tx_count : 0..2;
 
   -- Originator FSM.
-  --   awaiting_md_confirm - micro-deposit credits out, wait VERIFY_ACK
+  --   awaiting_md_confirm - wait for credit-based provider confirmation
   --   verifying_tps_account / verified_tps - TPS verifyAccount
   --   initiating_payment - A-3/A-4 latch then PAYMENT_INIT
   --   reversing - post-settlement compensating entry
@@ -427,20 +445,34 @@ DEFINE
 
   -- Helpers to the transaction slots (file header).
 
+  verification_submit := fsm_state = initiating_payment & md_state = md_sent_1;
+  submit_pair := submit_companion | verification_submit;
+
+  -- One verification cycle belongs to this provider and its latched target.
+  -- Counters use actual settlement outcomes, without prescribing a return code.
+  verification_active := tx_0.verification_entry & tx_1.verification_entry;
+  verification_credits := case tx_0.payment_state = settled : 1; TRUE : 0; esac;
+  verification_debits := case tx_1.payment_state = settled : 1; TRUE : 0; esac;
+  verification_entries_terminal :=
+       tx_0.payment_state in {settled, returned, rejected, reversed}
+     & tx_1.payment_state in {settled, returned, rejected, reversed};
+  verification_cycle_complete := verification_active & verification_linked
+    & verification_entries_terminal & !env.return_window_expired;
+
   -- Submit this step: initiating_payment or reversing, and
   -- next_slot_id points at the local slot.
   tx_0_submit_now :=
         !env.return_window_expired
       & env.phase in {ph_idle, ph_batch_open}
       & ((fsm_state = initiating_payment & next_slot_id = 0)
-      |  (fsm_state = initiating_payment & submit_companion
+      |  (fsm_state = initiating_payment & submit_pair
           & next_slot_id = 1 & tx_0.payment_state = not_submitted)
       |  (fsm_state = reversing          & next_slot_id = 0));
   tx_1_submit_now :=
         !env.return_window_expired
       & env.phase in {ph_idle, ph_batch_open}
       & ((fsm_state = initiating_payment & next_slot_id = 1)
-      |  (fsm_state = initiating_payment & submit_companion
+      |  (fsm_state = initiating_payment & submit_pair
           & next_slot_id = 0 & tx_1.payment_state = not_submitted)
       |  (fsm_state = reversing          & next_slot_id = 1));
 
@@ -550,8 +582,8 @@ DEFINE
   esac;
 
   -- Outgoing c_dollar_req. FUND_DEBIT / FUND_CREDIT / FUND_REVERSE.
-  -- Two MICRO credits during micro-deposit while md_state is
-  -- md_sent_1 or md_sent_2.
+  -- Legacy dollar-channel request: the provider-policy path below submits
+  -- transaction slots through initiating_payment.
   c_dollar_req_valid :=
         (fsm_state = linking_micro
          & (md_state = md_sent_1 | md_state = md_sent_2));
@@ -581,6 +613,7 @@ DEFINE
 ASSIGN
   -- Initial values
   init(fsm_state)              := idle;
+  init(verification_linked)    := FALSE;
   init(tx_count)               := 0;
   init(authorized_by_r0)       := FALSE;
   init(authorized_by_r1)       := FALSE;
@@ -610,11 +643,10 @@ ASSIGN
     fsm_state = linking_manual & link_ack_from_bo : linked_ok;
     fsm_state = linking_web    & link_ack_from_bo : linked_ok;
 
-    -- micro-deposit: after ODFI ack, md_state issues two MICRO credits
-    -- on c_dollar, then wait for Receiver VERIFY_ACK.
-    fsm_state = linking_micro & link_ack_from_bo : awaiting_md_confirm;
+    -- Micro-deposit provider policy: submit entries after the ODFI ack,
+    -- then link when a MICRO credit to this target settles.
+    fsm_state = linking_micro & link_ack_from_bo : initiating_payment;
     fsm_state = awaiting_md_confirm
-      & verify_ack_now
       & md_state = md_confirmed                  : linked_ok;
     fsm_state = awaiting_md_confirm
       & md_state = md_failed
@@ -631,6 +663,10 @@ ASSIGN
       & verify_ack_now                           : verified_tps;
     fsm_state = verified_tps                     : linked_ok;
 
+    -- Keep the current verification account linked until its pair completes.
+    fsm_state = linked_ok & verification_active
+      & !verification_entries_terminal          : linked_ok;
+
     -- linked_ok -> initiating_payment. Linking precedes debit, and
     -- the target receiver must currently authorize this originator.
     -- Else idle or stay linked_ok.
@@ -642,6 +678,7 @@ ASSIGN
 
     -- initiating_payment: slot latches A-3/A-4 params. One-step to
     -- payment_submitted; c_info_req sends PAYMENT_INIT this step.
+    fsm_state = initiating_payment & md_state = md_sent_1 : awaiting_md_confirm;
     fsm_state = initiating_payment               : payment_submitted;
 
     -- payment_submitted: may submit the second local slot in the same
@@ -678,9 +715,13 @@ ASSIGN
     TRUE                                          : fsm_state;
   esac;
 
+  next(verification_linked) := verification_linked
+    | (verification_active & fsm_state = linked_ok & md_state = md_confirmed
+       & link_method = micro_deposit & link_target_r = tx_0.receiver_id);
+
   -- tx_count: +1 per submission (regular or reversal). Bound 2.
   next(tx_count) := case
-    fsm_state = initiating_payment & submit_companion
+    fsm_state = initiating_payment & submit_pair
       & tx_count = 0                  : 2;
     (fsm_state = initiating_payment | fsm_state = reversing)
       & tx_count < 2                  : tx_count + 1;
@@ -728,8 +769,9 @@ ASSIGN
     fsm_state = linking_micro & link_ack_from_bo       : md_sent_1;
     md_state = md_sent_1                               : md_sent_2;
     md_state = md_sent_2                               : md_awaiting_confirm;
-    -- Receiver confirms amounts.
-    md_state = md_awaiting_confirm & verify_ack_now    : md_confirmed;
+    -- Abstract provider confirmation from credit settlement to this target.
+    md_state = md_awaiting_confirm & ((tx_0.payment_state = settled & tx_0.tx_code = credit & tx_0.amount = MICRO & tx_0.receiver_id = link_target_r)
+      | (tx_1.payment_state = settled & tx_1.tx_code = credit & tx_1.amount = MICRO & tx_1.receiver_id = link_target_r)) : md_confirmed;
     -- Else receiver may fail verification (nondet).
     md_state = md_awaiting_confirm                     : {md_awaiting_confirm, md_failed};
     -- Re-initiation resets md_state.

@@ -8,7 +8,9 @@
 # Env: IMAGE_NAME (default ach-model:nuxmv)  DOCKER_PLATFORM (default linux/amd64)
 #      VERIFY_MODE=quick|full|merge-only     ARTIFACT_DIR (optional per-run directory under output/)
 #      SKIP_INVAR=1  reuse existing spec-*-INV.log; only run EF BMC
+#      SKIP_CTL=1    reuse existing spec-*-CTL.log; only run invariants
 #      BMC_K         BMC bound for EF checks (default 50)
+#      PHI2_ENGINE=ic3|bmc (default bmc); PHI2_BMC_K (default 60)
 #
 # Internal (container): ./run_all_artifact.sh --inside-docker
 set -euo pipefail
@@ -17,6 +19,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 IMAGE_NAME="${IMAGE_NAME:-ach-model:nuxmv}"
 PLATFORM="${DOCKER_PLATFORM:-linux/amd64}"
 VERIFY_MODE="${VERIFY_MODE:-quick}"
+PHI2_ENGINE="${PHI2_ENGINE:-bmc}"
+PHI2_BMC_K="${PHI2_BMC_K:-60}"
 INSIDE_DOCKER=0
 USE_DOCKER=1
 ARTIFACT_DIR="${ARTIFACT_DIR:-}"
@@ -54,6 +58,28 @@ run_merge() {
   make -C "$ROOT" NUXMV="$NUXMV" OUTPUT_DIR="$OUTPUT_ROOT" merge check-merge
 }
 
+validate_ctl_reuse_model() {
+  local art="$1"
+  if [[ "$VERIFY_MODE" == quick && "${SKIP_CTL:-0}" == 1 ]]; then
+    if [[ ! -f "$art/_main_model.smv" ]] || ! cmp -s "$MERGED_MODEL" "$art/_main_model.smv"; then
+      echo "SKIP_CTL=1 requires existing CTL results for the identical merged model: $art" >&2
+      return 1
+    fi
+  fi
+}
+
+validate_ctl_reuse_logs() {
+  local logdir="$1" count="$2" i
+  if [[ "${SKIP_CTL:-0}" == 1 ]]; then
+    for ((i = 0; i < count; i++)); do
+      if [[ ! -s "$logdir/spec-$i-CTL.log" || ! -s "$logdir/timing.ctl.$i.tsv" ]]; then
+        echo "SKIP_CTL=1 requires the log and timing for CTL $i in $logdir" >&2
+        return 1
+      fi
+    done
+  fi
+}
+
 run_verify_quick() {
   local LOGDIR="$1"
   mkdir -p "$LOGDIR"
@@ -62,6 +88,16 @@ run_verify_quick() {
   local VERB="${VERB:-2}"
   local BMC_K="${BMC_K:-50}"
   local fail=0
+
+  case "$PHI2_ENGINE" in
+    ic3|bmc) ;;
+    *) echo "Unknown PHI2_ENGINE=$PHI2_ENGINE (use ic3|bmc)" >&2; return 1 ;;
+  esac
+  if [[ "$PHI2_ENGINE" == bmc && ! "$PHI2_BMC_K" =~ ^[0-9]+$ ]]; then
+    echo "PHI2_BMC_K must be a nonnegative integer" >&2
+    return 1
+  fi
+  echo "Phi2 engine: $PHI2_ENGINE (BMC bound: $PHI2_BMC_K)"
 
   # check_invar_ic3 -n uses show_property unified indices (CTL SPECs first,
   # then Invar). Discover indices; do not assume Invar is 0, 1, 2.
@@ -109,20 +145,26 @@ EOF
     /^[[:space:]]*\[CTL/ { print idx "\t" formula }
   ' "$prop_out")
   echo "CTL properties: ${#CTL_GIDX[@]} (BMC of !(p), k=${BMC_K})"
+  validate_ctl_reuse_logs "$LOGDIR" "${#CTL_GIDX[@]}" || return 1
 
   run_one() {
     local i="$1" gidx="$2"
     local out="${LOGDIR}/spec-${i}-INV.log"
     local cmds="${LOGDIR}/cmds-${i}-INV.txt"
     local t0="$SECONDS"
+    local setup="go_msat" check="check_invar_ic3 -n $gidx"
+    if [[ "$i" -eq 1 && "$PHI2_ENGINE" == bmc ]]; then
+      setup="go_bmc"
+      check="check_invar_bmc_inc -a falsification -n $gidx -k $PHI2_BMC_K"
+    fi
     cat >"$cmds" <<EOF
 set on_failure_script_quits
 read_model -i $MODEL
 flatten_hierarchy
 encode_variables
 build_boolean_model
-go_msat
-check_invar_ic3 -n $gidx
+$setup
+$check
 quit
 EOF
     if ! "$NUXMV" -v "$VERB" -source "$cmds" >"$out" 2>&1; then
@@ -165,14 +207,18 @@ EOF
   fi
 
   local N_CTL=${#CTL_GIDX[@]}
-  for ((w = 0; w < N_CTL; w += JOBS)); do
-    local -a pids=()
-    for ((i = w; i < w + JOBS && i < N_CTL; i++)); do
-      (run_one_ctl "$i" "${CTL_GIDX[$i]}" "${CTL_ATOM[$i]}") &
-      pids+=("$!")
+  if [[ "${SKIP_CTL:-0}" == "1" ]]; then
+    echo "SKIP_CTL=1: keeping existing spec-*-CTL.log"
+  else
+    for ((w = 0; w < N_CTL; w += JOBS)); do
+      local -a pids=()
+      for ((i = w; i < w + JOBS && i < N_CTL; i++)); do
+        (run_one_ctl "$i" "${CTL_GIDX[$i]}" "${CTL_ATOM[$i]}") &
+        pids+=("$!")
+      done
+      for pid in "${pids[@]}"; do wait "$pid" || fail=1; done
     done
-    for pid in "${pids[@]}"; do wait "$pid" || fail=1; done
-  done
+  fi
 
   {
     for ((i = 0; i < N_SPEC; i++)); do
@@ -191,7 +237,7 @@ EOF
     f="${LOGDIR}/spec-${i}-INV.log"
     if [[ -f "$f" ]]; then
       # Final -- invariant/-- specification is true/false is the verdict.
-      # Bound-k "no proof or counterexample" is IC3 progress only.
+      # Bound-k "no proof or counterexample" is progress, not a verdict.
       verdict=$(grep -iE -- '-- (invariant|specification) .* is (true|false)' "$f" | tail -1 || true)
       if [[ -z "$verdict" ]]; then
         verdict=$(grep -E -- 'no proof or counterexample found with bound [0-9]+' "$f" | tail -1 || true)
@@ -238,6 +284,7 @@ run_inside_docker() {
   mkdir -p "$ART"
 
   run_merge
+  validate_ctl_reuse_model "$ART"
   cp -f "$MERGED_MODEL" "$ART/_main_model.smv"
 
   local fail=0
@@ -275,6 +322,7 @@ run_host_no_docker() {
   cd "$ROOT"
 
   run_merge
+  validate_ctl_reuse_model "$ART"
   cp -f "$MERGED_MODEL" "$ART/_main_model.smv"
 
   local fail=0
@@ -320,6 +368,9 @@ run_host_docker() {
   docker run --rm --platform "$PLATFORM" \
     -e VERIFY_MODE="${VERIFY_MODE}" \
     -e SKIP_INVAR="${SKIP_INVAR:-}" \
+    -e SKIP_CTL="${SKIP_CTL:-}" \
+    -e PHI2_ENGINE="$PHI2_ENGINE" \
+    -e PHI2_BMC_K="$PHI2_BMC_K" \
     -e ARTIFACT_DIR=/artifacts \
     -v "$ART:/artifacts" \
     "$IMAGE_NAME"

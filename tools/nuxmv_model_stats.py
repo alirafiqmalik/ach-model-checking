@@ -262,7 +262,7 @@ def _dynamic_from_logs(log_dir: Path) -> dict[str, Any]:
         text = spec_log.read_text(encoding="utf-8", errors="replace")
         out[f"spec_{m.group(1)}"] = {
             "log_file": spec_log.name,
-            "ic3_max_bound_explored": _ic3_max_bound(text),
+            "max_bound_explored": _ic3_max_bound(text),
             "verdict_line": _ic3_verdict(text),
             "log_bytes": spec_log.stat().st_size,
         }
@@ -363,7 +363,7 @@ def build_markdown(
             spec = dynamic[skey]
             idx = skey.split("_", 1)[1]
             labels = {
-                "ic3_max_bound_explored": f"IC3 max bound explored (spec {idx})",
+                "max_bound_explored": f"Max bound explored (spec {idx})",
                 "verdict_line": f"Verdict (spec {idx})",
                 "log_bytes": f"Verification log size (bytes, spec {idx})",
             }
