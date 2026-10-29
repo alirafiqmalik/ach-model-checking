@@ -163,7 +163,7 @@ _INVAR_NAMES = {
     1: "Φ2 Zero-Sum Invariant (A2: creditMINT Attack)",
     2: "Φ3 Settlement Finality (A3: creditRESET Attack)",
 }
-_TRUE_FALSE = re.compile(r"is (true|false)\s*$", re.I)
+_TRUE_FALSE = re.compile(r"is (true|false)\s*$", re.I | re.MULTILINE)
 _EF_TRAILER = re.compile(r"EF_RESULT\s+(true|false|inconclusive)", re.I)
 
 
