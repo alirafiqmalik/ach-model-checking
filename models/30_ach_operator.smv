@@ -179,8 +179,7 @@ INVAR ( fsm_state = checking_data_v1
       | fsm_state = data_rejected_entry
       | fsm_state = sorting_routing
       | fsm_state = routing_to_rdfi
-      | fsm_state = forwarded_ack
-      | fsm_state = return_processing )
+      | fsm_state = forwarded_ack )
       -> any_tx_in_pipeline;
 
 ASSIGN

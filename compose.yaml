@@ -9,6 +9,9 @@ services:
       JOBS: ${JOBS:-3}
       BMC_K: ${BMC_K:-50}
       SKIP_INVAR: ${SKIP_INVAR:-0}
+      SKIP_CTL: ${SKIP_CTL:-0}
+      PHI2_ENGINE: ${PHI2_ENGINE:-bmc}
+      PHI2_BMC_K: ${PHI2_BMC_K:-60}
       ARTIFACT_DIR: /artifacts
     volumes:
       - ${ARTIFACT_DIR:-./output/compose-run}:/artifacts

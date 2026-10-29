@@ -96,10 +96,10 @@ DEFINE
   _r0_state_changing := r_0_ref.fsm_state = account_state_changed;
   _r1_state_changing := r_1_ref.fsm_state = account_state_changed;
 
-  -- projections from a_ref.fwd_*
+  -- Forwarded fields: use the captured transaction code during processing.
   _tx_id          := a_ref.fwd_tx_id;          -- 0..3
   _tx_receiver_id := a_ref.fwd_receiver_id;    -- 0..1
-  _tx_code        := a_ref.fwd_tx_code;        -- {debit, credit}
+  _tx_code        := _hand_code;               -- {debit, credit}
   _tx_recv_acct   := a_ref.fwd_recv_acct_type; -- {checking, savings, credit_card}
   _tx_amount      := a_ref.fwd_amount;         -- {MICRO, SMALL, LARGE}
   _tx_is_reversal := a_ref.fwd_is_reversal;    -- boolean

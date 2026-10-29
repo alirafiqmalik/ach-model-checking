@@ -51,7 +51,7 @@ ARTIFACT_CPUS=4 ARTIFACT_MEMORY=8g JOBS=3 docker compose config
 ARTIFACT_CPUS=4 ARTIFACT_MEMORY=8g JOBS=3 docker compose run --build --rm artifact
 ```
 
-Compose outputs default to `output/compose-run/`; set `ARTIFACT_DIR` to a fresh host directory for each retained run. `VERIFY_MODE`, `BMC_K` and `SKIP_INVAR` are also forwarded. The existing `./run_all_artifact.sh` Docker command remains available; Compose resource limits apply when using Compose. See [Compose CPU and memory limits](https://docs.docker.com/reference/compose-file/services/).
+Compose outputs default to `output/compose-run/`; set `ARTIFACT_DIR` to a fresh host directory for each retained run. `VERIFY_MODE`, `BMC_K`, `SKIP_INVAR`, `SKIP_CTL`, `PHI2_ENGINE` and `PHI2_BMC_K` are also forwarded. The existing `./run_all_artifact.sh` Docker command remains available; Compose resource limits apply when using Compose. See [Compose CPU and memory limits](https://docs.docker.com/reference/compose-file/services/).
 
 ### Verification modes
 
@@ -59,7 +59,7 @@ Set `VERIFY_MODE` before the command:
 
 | Value        | What it does                                                                  |
 | ------------ | ----------------------------------------------------------------------------- |
-| `quick`      | Default. IC3 on Φ1–Φ3, then BMC on each `SPEC EF`. Writes the property sheet. |
+| `quick`      | Default. IC3 on Φ1/Φ3, incremental BMC on Φ2, then BMC on each `SPEC EF`. Writes the property sheet. |
 | `full`       | Runs `make verify` (verbose nuXmv on the merged model).                       |
 | `merge-only` | Merge only; skips nuXmv. Still writes `model_stats.md` where possible.        |
 
@@ -69,15 +69,23 @@ Example:
 VERIFY_MODE=full ./run_all_artifact.sh --no-docker
 ```
 
+The default quick run uses incremental BMC for the per-account verification-cycle Φ2 invariant:
+
+```bash
+./run_all_artifact.sh --no-docker
+```
+
+`PHI2_ENGINE` defaults to `bmc`, with `PHI2_BMC_K=60`. Set `PHI2_ENGINE=ic3` to use IC3 for Φ2 instead. The engine option changes only the checking algorithm. Both engines check the declared Φ2 property directly on the model, without an auxiliary query or search restrictions. A BMC counterexample conclusively refutes Φ2. No counterexample through `PHI2_BMC_K` is only bounded-inconclusive, not a safety proof. Φ1/Φ3 still use IC3, and all EF checks retain their existing method and `BMC_K` bound. The same options work with Docker and Compose.
+
 ## Results
 
-The script prints the artifact directory when it finishes.
+The script prints the artifact directory when it finishes. In quick mode, `spec-1-INV.log` is written during the initial invariant stage, so the Φ2 trace can be inspected while the EF reachability checks continue.
 
 | File / folder           | Meaning                                                                                      |
 | ----------------------- | -------------------------------------------------------------------------------------------- |
 | `_main_model.smv`       | Single merged model (same as `output/_main_model.smv`).                                      |
 | `model_stats.md`        | Model size plus a table of every Invar and `EF` property when logs exist.                     |
-| `spec-*-INV.log`        | Quick-mode IC3 logs (written in the run directory, not a separate `logs/` tree).             |
+| `spec-*-INV.log`        | Quick-mode invariant logs (IC3 for Φ1/Φ3; incremental BMC for Φ2 by default).             |
 | `spec-*-CTL.log`        | BMC logs for each `EF p` (k-induction of `!(p)`).                                             |
 | `done.txt`              | Confirms the container or script finished.                                                   |
 | `verify-skipped.txt`    | Present only if `VERIFY_MODE=merge-only`.                                                    |
@@ -95,60 +103,80 @@ To add EF logs to an existing INV run without repeating Φ1–Φ3:
 SKIP_INVAR=1 ARTIFACT_DIR=./output/local-run-<timestamp> ./run_all_artifact.sh --no-docker
 ```
 
+To rerun invariants while retaining completed EF logs for the **same merged model**:
+
+```bash
+SKIP_CTL=1 ARTIFACT_DIR=./output/local-run-<timestamp> ./run_all_artifact.sh --no-docker
+```
+
+Use either skip option only when the retained logs and `_main_model.smv` belong to the current model. Start a fresh artifact directory after changing the model. `SKIP_CTL=1` rejects a missing or mismatched saved model and missing CTL logs or timings. These options reuse existing results; they do not rerun skipped checks.
+
 ## Expected results
 
-`VERIFY_MODE=quick` on a 16-thread, 15 GiB machine. Φ1–Φ3 are IC3 (false: the A1: creditBLEED, A2: creditMINT, and A3: creditRESET attacks). Each `EF` row is BMC of `!(p)` with `k=50`: true is a witness, false is unreachable, inconclusive means no proof or counterexample inside the bound. INV jobs run in parallel (wall clock is Φ2, about 48 minutes). EF jobs run after that.
+Reference results from nuXmv 2.1.0 are saved in [`local-run-20261029-artifact-reviews`](saved-reference-results/local-run-20261029-artifact-reviews/model_stats.md). The normal native command used the defaults `PHI2_ENGINE=bmc`, `PHI2_BMC_K=60`, `BMC_K=50` and `JOBS=9`: Φ1/Φ3 use IC3, Φ2 uses incremental BMC on the declared per-account verification-cycle invariant, and all 37 EF checks use the existing `een-sorensson` method. These engines and bounds match the current defaults.
+
+All 40 checks completed in one uninterrupted normal run; see [run configuration and audit](saved-reference-results/local-run-20261029-artifact-reviews/RUN.txt). Timings are individual job wall times under concurrent load. The four bounded-inconclusive EF results do not establish unreachability.
 
 | # | Kind | Formula | Result | Time (s) |
 | --- | --- | --- | --- | --- |
-| 0 | CTL | EF orig_0.fsm_state = linked_ok | true | 2 |
-| 1 | CTL | EF orig_0.fsm_state = link_failed | true | 95 |
-| 2 | CTL | EF orig_0.md_state = md_confirmed | inconclusive | 1262 |
-| 3 | CTL | EF orig_0.md_state = md_failed | true | 4 |
-| 4 | CTL | EF orig_0.tx_0.payment_state = rejected | true | 14 |
+| 0 | CTL | EF orig_0.fsm_state = linked_ok | true | 3 |
+| 1 | CTL | EF orig_0.fsm_state = link_failed | true | 122 |
+| 2 | CTL | EF orig_0.md_state = md_confirmed | true | 80 |
+| 3 | CTL | EF orig_0.md_state = md_failed | true | 6 |
+| 4 | CTL | EF orig_0.tx_0.payment_state = rejected | true | 15 |
 | 5 | CTL | EF orig_0.tx_0.payment_state = returned | true | 44 |
 | 6 | CTL | EF orig_0.tx_0.payment_state = reversed | false | 1 |
-| 7 | CTL | EF orig_0.fsm_state = reversing | true | 318 |
+| 7 | CTL | EF orig_0.fsm_state = reversing | true | 324 |
 | 8 | CTL | EF recv_0.fsm_state = auth_granted | true | 1 |
-| 9 | CTL | EF recv_0.fsm_state = auth_revoked_state | true | 0 |
-| 10 | CTL | EF recv_0.fsm_state = confirmed_md | inconclusive | 967 |
-| 11 | CTL | EF recv_0.fsm_state = rejected_md | inconclusive | 927 |
-| 12 | CTL | EF recv_0.fsm_state = notified_return | false | 0 |
-| 13 | CTL | EF recv_0.fsm_state = account_state_changed | true | 0 |
-| 14 | CTL | EF odfi_i.fsm_state = tps_verified | false | 0 |
-| 15 | CTL | EF odfi_i.fsm_state = tps_rejected | inconclusive | 2169 |
-| 16 | CTL | EF odfi_i.fsm_state = validation_rejected | true | 7 |
-| 17 | CTL | EF odfi_i.fsm_state = operator_acked | true | 15 |
+| 9 | CTL | EF recv_0.fsm_state = auth_revoked_state | true | 1 |
+| 10 | CTL | EF recv_0.fsm_state = confirmed_md | inconclusive | 1349 |
+| 11 | CTL | EF recv_0.fsm_state = rejected_md | inconclusive | 1310 |
+| 12 | CTL | EF recv_0.fsm_state = notified_return | false | 1 |
+| 13 | CTL | EF recv_0.fsm_state = account_state_changed | true | 1 |
+| 14 | CTL | EF odfi_i.fsm_state = tps_verified | false | 1 |
+| 15 | CTL | EF odfi_i.fsm_state = tps_rejected | inconclusive | 2678 |
+| 16 | CTL | EF odfi_i.fsm_state = validation_rejected | true | 5 |
+| 17 | CTL | EF odfi_i.fsm_state = operator_acked | true | 16 |
 | 18 | CTL | EF odfi_i.fsm_state = link_acked | true | 1 |
-| 19 | CTL | EF odfi_i.u3_batch_reject | true | 5 |
-| 20 | CTL | EF odfi_i.u3_flag_entries | true | 5 |
+| 19 | CTL | EF odfi_i.u3_batch_reject | true | 6 |
+| 20 | CTL | EF odfi_i.u3_flag_entries | true | 6 |
 | 21 | CTL | EF ach_i.fsm_state = data_rejected_batch | true | 19 |
 | 22 | CTL | EF ach_i.fsm_state = data_rejected_entry | true | 20 |
-| 23 | CTL | EF ach_i.fsm_state = forwarded_ack | true | 6 |
+| 23 | CTL | EF ach_i.fsm_state = forwarded_ack | true | 8 |
 | 24 | CTL | EF rdfi_i.fsm_state = settled_state | true | 24 |
 | 25 | CTL | EF rdfi_i.fsm_state = returning | true | 24 |
 | 26 | CTL | EF rdfi_i.fsm_state = reversed_state | false | 1 |
-| 27 | CTL | EF rdfi_i.selected_return_code = R16 | true | 27 |
-| 28 | CTL | EF rdfi_i.selected_return_code = R29 | true | 30 |
-| 29 | CTL | EF env_i.window_count = 3 | true | 25 |
-| 30 | CTL | EF env_i.phase = ph_return_closed | true | 5 |
-| 31 | CTL | EF g.n_credits_micro > 0 | true | 43 |
-| 32 | CTL | EF g.n_credits_small > 0 | true | 40 |
-| 33 | CTL | EF g.n_credits_large > 0 | true | 42 |
-| 34 | CTL | EF g.n_debits_micro > 0 | false | 6 |
-| 35 | Invar | phi1_ok_tx0 & phi1_ok_tx1 & phi1_ok_tx2 & phi1_ok_tx3 | false | 222 |
-| 36 | Invar | cycle_complete -> (n_credits_micro = n_debits_micro & n_credits_regular = n_debits_regular) | false | 2888 |
-| 37 | Invar | resource_released_tx* -> return_window_expired | false | 6 |
+| 27 | CTL | EF rdfi_i.selected_return_code = R16 | true | 52 |
+| 28 | CTL | EF rdfi_i.selected_return_code = R29 | inconclusive | 559 |
+| 29 | CTL | EF env_i.window_count = 3 | true | 39 |
+| 30 | CTL | EF env_i.phase = ph_return_closed | true | 4 |
+| 31 | CTL | EF g.n_credits_micro > 0 | true | 58 |
+| 32 | CTL | EF g.n_credits_small > 0 | true | 71 |
+| 33 | CTL | EF g.n_credits_large > 0 | true | 72 |
+| 34 | CTL | EF g.n_debits_micro > 0 | true | 70 |
+| 35 | CTL | EF g.n_debits_small > 0 | true | 72 |
+| 36 | CTL | EF g.n_debits_large > 0 | true | 39 |
+| 37 | Invar | (((phi1_ok_tx0 & phi1_ok_tx1) & phi1_ok_tx2) & phi1_ok_tx3) | false | 13 |
+| 38 | Invar | (((orig_0.verification_cycle_complete -> orig_0.verification_credits = orig_0.verification_debits) & (orig_1.verification_cycle_complete -> orig_1.verification_credits = orig_1.verification_debits)) & (g.cycle_complete -> g.n_credits_regular = g.n_debits_regular)) | false | 33 |
+| 39 | Invar | ((((resource_released_tx0 -> env_i.return_window_expired) & (resource_released_tx1 -> env_i.return_window_expired)) & (resource_released_tx2 -> env_i.return_window_expired)) & (resource_released_tx3 -> env_i.return_window_expired)) | false | 9 |
 
-### Paper attacks
+### Paper properties and attack witnesses
 
-Paper Φ1–Φ3 are the three `INVARSPEC`s. `show_property` numbers them 35–37 because the CTL `EF`s come first. Each is false; the counterexample is in that INV log.
+The three `INVARSPEC`s are Φ1–Φ3. Their unified indices are 37–39 after the 37 CTL reachability properties. An unrestricted invariant counterexample need not contain every step of the corresponding paper attack.
 
-| Paper | Attack | Invar # | Log | Name | CEX |
-| --- | --- | --- | --- | --- | --- |
-| Φ1 | A1: creditBLEED Attack | 35 | spec-0-INV.log | Continuous Authorization | ODFI provisional debit + R16 |
-| Φ2 | A2: creditMINT Attack | 36 | spec-1-INV.log | Zero-Sum Invariant | MICRO credit settled vs matching MICRO debit R08/R16, settled counts unequal |
-| Φ3 | A3: creditRESET Attack | 37 | spec-2-INV.log | Settlement Finality | issuer card posting with `resource_available` while the return window is still open |
+For micro-deposit linking, each Originator submits a MICRO credit and its recovery debit to the same freely selected `link_target_r`. The two local slots record membership in this verification cycle. Entry outcomes still follow the existing Operator and RDFI transitions: neither successful settlement nor a debit return is prescribed. After credit settlement, the provider links and keeps that verification account active until the pair is terminal.
+
+Φ2 checks settled-credit/debit equality separately for each provider's linked-account verification cycle, before the return window closes. A history latch records that this account was linked, so leaving the linking state cannot erase the obligation. This replaces the previous global MICRO aggregation, which could match a credit against an unrelated provider's or account's debit. Regular-class balance retains the existing global-cycle condition. This is a specification and verification-protocol correction, not just a change of search engine. It does not assert global MICRO balance for arbitrary manual/web-linked payments.
+
+The normal command checks this Φ2 directly and saves its counterexample as `spec-1-INV.log`. The saved trace has 30 states: Originator 1, Receiver 1, credit settlement at 21, confirmation at 22, linkage at 23, and debit return `R16` at 30. The other Originator submits nothing. No additional creditMINT query, fixed account selection, return-code constraint, private helper, or extra command is used. The source retains both Originators and both Receivers.
+
+This provider policy abstracts the Receiver confirmation exchange; the separate ODFI TPS handshake remains outside that abstraction. The model covers one verification pair per provider. Repeated-cycle amplification remains empirical.
+
+| Paper | Attack | Invar # | Log | Interpretation |
+| --- | --- | --- | --- | --- |
+| Φ1 | A1: creditBLEED | 37 | spec-0-INV.log | Authorization at submission and throughout the pipeline, plus the existing RDFI/return predicate. A full provisional-debit/R16 sequence requires a targeted witness. |
+| Φ2 | A2: creditMINT | 38 | spec-1-INV.log | Per-provider, per-account verification-cycle imbalance after linkage. The saved ordinary Φ2 trace shows the creditMINT sequence. |
+| Φ3 | A3: creditRESET | 39 | spec-2-INV.log | Issuer card posting makes resources available before the return window expires. |
 
 ## Makefile
 
@@ -166,4 +194,4 @@ Paper Φ1–Φ3 are the three `INVARSPEC`s. `show_property` numbers them 35–37
 - `tools/`: `merge_smv.sh`, stats script, nuXmv binaries (from the artifact bundle).
 - `run_all_artifact.sh`: merge, checks, and stats (name matches the paper scripts).
 - `output/`: gitignored merge product and per-run logs/stats.
-- `saved-reference-results/`: committed snapshot of a known-good job run.
+- `saved-reference-results/`: completed reference run for the current model, with logs, timings, statistics and provenance.

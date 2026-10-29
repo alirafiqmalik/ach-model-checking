@@ -122,12 +122,16 @@ JUSTICE env_i.return_window_expired;
 -- Exists-compromised disjunct is FALSE in the base model.
 INVARSPEC ( phi1_ok_tx0 & phi1_ok_tx1 & phi1_ok_tx2 & phi1_ok_tx3 );
 
--- Φ2 Zero-Sum Invariant, per-class (paper K = {micro, regular})
--- (A2: creditMINT Attack).
--- Counts are settled entries (n_credits_* / n_debits_*).
-INVARSPEC ( g.cycle_complete ->
-            ( g.n_credits_micro = g.n_debits_micro
-            & g.n_credits_regular = g.n_debits_regular ) );
+-- Φ2: each provider's linked-account verification cycle must balance.
+-- The verification pair shares one latched target account. This replaces
+-- global MICRO aggregation, which could pair entries from unrelated accounts.
+-- Regular-class balance retains the existing global-cycle condition.
+INVARSPEC
+  ( (orig_0.verification_cycle_complete ->
+       orig_0.verification_credits = orig_0.verification_debits)
+  & (orig_1.verification_cycle_complete ->
+       orig_1.verification_credits = orig_1.verification_debits)
+  & (g.cycle_complete -> g.n_credits_regular = g.n_debits_regular) );
 
 -- Φ3 Settlement Finality (A3: creditRESET Attack). Counterexample: resource released while
 -- the return window is still open. INVARSPEC (not AG-AF): JUSTICE
