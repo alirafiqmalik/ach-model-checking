@@ -90,10 +90,12 @@ DEFINE
          & orig_1.tx_1.return_code = R16
          & !phi1_rdfi_eligible_tx3 );
 
-  phi1_ok_tx0 := orig_0.tx_0.entry_settled -> phi1_authorized_tx0;
-  phi1_ok_tx1 := orig_0.tx_1.entry_settled -> phi1_authorized_tx1;
-  phi1_ok_tx2 := orig_1.tx_0.entry_settled -> phi1_authorized_tx2;
-  phi1_ok_tx3 := orig_1.tx_1.entry_settled -> phi1_authorized_tx3;
+  -- Require authorization at submission and throughout the pipeline,
+  -- together with the existing live RDFI/return predicate.
+  phi1_ok_tx0 := orig_0.tx_0.entry_settled -> (phi1_authorized_tx0 & orig_0.tx_0.submitted_while_authorized & !orig_0.tx_0.revoked_during_pipeline);
+  phi1_ok_tx1 := orig_0.tx_1.entry_settled -> (phi1_authorized_tx1 & orig_0.tx_1.submitted_while_authorized & !orig_0.tx_1.revoked_during_pipeline);
+  phi1_ok_tx2 := orig_1.tx_0.entry_settled -> (phi1_authorized_tx2 & orig_1.tx_0.submitted_while_authorized & !orig_1.tx_0.revoked_during_pipeline);
+  phi1_ok_tx3 := orig_1.tx_1.entry_settled -> (phi1_authorized_tx3 & orig_1.tx_1.submitted_while_authorized & !orig_1.tx_1.revoked_during_pipeline);
 
   -- Φ3 helpers.
   -- resource_available: issuer restores the card limit. Can become

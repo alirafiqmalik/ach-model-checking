@@ -1,0 +1,14 @@
+services:
+  artifact:
+    build: .
+    platform: ${DOCKER_PLATFORM:-linux/amd64}
+    cpus: ${ARTIFACT_CPUS:-4}
+    mem_limit: ${ARTIFACT_MEMORY:-8g}
+    environment:
+      VERIFY_MODE: ${VERIFY_MODE:-quick}
+      JOBS: ${JOBS:-3}
+      BMC_K: ${BMC_K:-50}
+      SKIP_INVAR: ${SKIP_INVAR:-0}
+      ARTIFACT_DIR: /artifacts
+    volumes:
+      - ${ARTIFACT_DIR:-./output/compose-run}:/artifacts
