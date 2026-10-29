@@ -219,3 +219,5 @@ SPEC EF (g.n_credits_micro > 0);
 SPEC EF (g.n_credits_small > 0);
 SPEC EF (g.n_credits_large > 0);
 SPEC EF (g.n_debits_micro  > 0);
+SPEC EF (g.n_debits_small  > 0);
+SPEC EF (g.n_debits_large  > 0);
