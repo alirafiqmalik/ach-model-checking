@@ -295,9 +295,9 @@ ASSIGN
     & _current_acct_status = CREDIT_BLOCKED
     & _tx_code = credit                             : R02;
 
-    -- ACTIVE + nondet failure on a debit -> R01
+    -- Eligible debit: no return condition, so permit settlement.
     fsm_state = processing_debit
-    & !_must_return                                 : R01;
+    & !_must_return                                 : none_rc;
 
     TRUE                                            : selected_return_code;
   esac;
