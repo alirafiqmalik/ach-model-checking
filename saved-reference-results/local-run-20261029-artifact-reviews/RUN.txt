@@ -1,0 +1,13 @@
+Completed reference verification: nuXmv 2.1.0, native Linux.
+Command from the repository root: ./run_all_artifact.sh --no-docker
+Default quick mode, JOBS=9, PHI2_ENGINE=bmc, PHI2_BMC_K=60, BMC_K=50.
+One uninterrupted run: no SKIP flags, reused logs, private helper, auxiliary creditMINT query, or extra witness command.
+Model SHA256: 521cb55953c68f38e4c3587381f686a29af489727405b0d78bdd66ed2a3b568d
+
+All 40 property checks completed. Phi1, Phi2 and Phi3 are false. The 37 EF checks comprise 29 true, 4 false, and 4 bounded-inconclusive results. Bounded-inconclusive results are not unreachability proofs. All property logs contain Successful termination and have recorded timings. audit.json records each verdict, trace length and log hash.
+
+Phi2 now checks MICRO settlement balance within each provider's linked-account verification cycle. It replaces the earlier global MICRO aggregation; this is a documented specification change. The model binds the verification credit and recovery debit to the provider's selected target account and retains that cycle until both entries are terminal. Successful settlement and debit returns remain outcomes of the normal Operator/RDFI processing. Regular-class balance retains the original global-cycle condition.
+
+The ordinary Phi2 counterexample is spec-1-INV.log. The solver selected Originator 1 and Receiver 1 without search constraints. The 30-state trace has credit settlement at 21, confirmation at 22, linkage at 23, and debit return R16 at 30. The account is DEBIT_BLOCKED. The other Originator submits nothing. At completion, this verification cycle has one settled MICRO credit and zero settled MICRO debits. The verifying provider uses micro-deposit linking, with no prior manual/web linking. No account, Originator, return code, or failing outcome is selected by an auxiliary query.
+
+The provider credit-success linkage policy is modeled; the Receiver confirmation exchange, separate ODFI TPS handshake and multi-cycle amplification remain outside this abstraction. The model contains one verification pair per provider. Raw commands preserve the execution paths. Reproduce with the normal runner in your checkout; it generates the commands for your paths. Timings are per-job wall times under concurrent load, not universal runtime guarantees.

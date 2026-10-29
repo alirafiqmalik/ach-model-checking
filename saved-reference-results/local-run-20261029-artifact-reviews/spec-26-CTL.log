@@ -1,0 +1,219 @@
+*** This is nuXmv 2.1.0 (compiled on Fri Nov 29 13:41:31 2024)
+*** Copyright (c) 2014-2024, Fondazione Bruno Kessler
+*** For more information on nuXmv see https://nuxmv.fbk.eu
+*** or email to <nuxmv@fbk.eu>.
+*** Please report bugs at Please report bugs to <nusmv-users@fbk.eu>
+*** (click on "Login Anonymously" to access)
+*** Alternatively write to <nuxmv@fbk.eu>.
+
+*** This version of nuXmv is linked to NuSMV 2.7.0.
+*** For more information on NuSMV see <http://nusmv.fbk.eu>
+*** or email to <nusmv-users@fbk.eu>.
+*** Copyright (C) 2010-2024, Fondazione Bruno Kessler
+
+*** This version of nuXmv is linked to the CUDD library version 2.4.1
+*** Copyright (c) 1995-2004, Regents of the University of Colorado
+
+*** This version of nuXmv is linked to the MiniSat SAT solver. 
+*** See http://minisat.se/MiniSat.html
+*** Copyright (c) 2003-2006, Niklas Een, Niklas Sorensson
+*** Copyright (c) 2007-2010, Niklas Sorensson
+
+*** This version of nuXmv is linked to MathSAT
+*** Copyright (C) 2009-2019 by Fondazione Bruno Kessler
+*** Copyright (C) 2009-2019 by University of Trento and others
+*** See http://mathsat.fbk.eu
+
+Parsing file "/home/ahm/Desktop/project/artifacts-eval/acm-ccs-ach-payments/eval_review/source-ach-model-checking/output/_main_model.smv" ..... done.
+Flattening hierarchy...
+FlatHierarchy: calculating vars constraints...
+FlatHierarchy: vars constraints calculated
+checking for multiple assignments in process ...
+Done
+checking for circular assignments in process ...
+Done
+TraceMgr: registered layer 'model'
+...done
+Building variables...
+Initializing global boolean encoding...
+Global boolean encoding initialized.
+
+Heuristics "basic" is going to be used to create varordering statically
+
+Initializing global BDD encoding...
+Global BDD encoding initialized.
+...done
+
+Creating the scalar FSM...
+FlatHierarchy: calculating vars constraints...
+FlatHierarchy: vars constraints calculated
+Triggering postponed calculation of vars constraints
+FlatHierarchy: calculating vars constraints...
+FlatHierarchy: vars constraints calculated
+Successfully created the scalar FSM
+
+Creating the boolean FSM...
+Triggering postponed calculation of vars constraints
+FlatHierarchy: calculating vars constraints...
+FlatHierarchy: vars constraints calculated
+Warning: cannot assign value 4 to variable env_i.window_count
+Warning: cannot assign value 3 to variable recv_0.md_received_credits
+Warning: cannot assign value 3 to variable recv_1.md_received_credits
+Warning: cannot assign value 2 to variable recv_0.target_originator
+Warning: cannot assign value 2 to variable recv_1.target_originator
+Warning: cannot assign value 3 to variable orig_0.tx_count
+Warning: cannot assign value 4 to variable orig_0.md_reinit_count
+Warning: cannot assign value 3 to variable orig_1.tx_count
+Warning: cannot assign value 4 to variable orig_1.md_reinit_count
+Warning: cannot assign value 4 to variable rdfi_i.c_info_req_payload_tx_id
+Warning: cannot assign value 4 to variable rdfi_i.c_dollar_req_payload_tx_id
+Successfully created the boolean FSM
+
+The boolean sexp model has been built from file /home/ahm/Desktop/project/artifacts-eval/acm-ccs-ach-payments/eval_review/source-ach-model-checking/output/_main_model.smv.
+Initializing the BMC package... 
+
+Initializing global BE encoding...
+Global BE encoding initialized.
+Initializing the SBMC package... 
+Done 
+Building the BMC FSM... 
+Done 
+
+Generating invariant problem (Een/Sorensson)
+
+Building the base for k=0
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 0
+ Length of list of clauses = 1
+ Length of list of variables = 0
+The false constant has been added to a solver
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.000000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=0
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 2348
+ Length of list of clauses = 4
+ Length of list of variables = 4
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.000000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=1
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 0
+ Length of list of clauses = 1
+ Length of list of variables = 0
+The false constant has been added to a solver
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.000000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=1
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 3517
+ Length of list of clauses = 5493
+ Length of list of variables = 782
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.007000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=2
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 0
+ Length of list of clauses = 1
+ Length of list of variables = 0
+The false constant has been added to a solver
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.000000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=2
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 4953
+ Length of list of clauses = 10960
+ Length of list of variables = 1236
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.015000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=3
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 6381
+ Length of list of clauses = 10323
+ Length of list of variables = 1644
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.000000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=3
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 7622
+ Length of list of clauses = 17081
+ Length of list of variables = 1653
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.018000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+Quitting the GR commands... 
+Quitting the param addon... 
+Quitting the kltl addon... 
+Quitting Trace Property Set (CTP) package... 
+Quitting the hasdel addon... 
+Quitting the Trace_Executor package... 
+Quitting the Sym2ex package... 
+Quitting the Abstraction package...
+Quitting the AbsBmc package...
+Quitting the QE package...
+Quitting the Cores package... 
+Quitting the Cegar package...
+Quitting the Mathsat package...
+Quitting the Invgen package... 
+Quitting the GR package... 
+Quitting the BaPsl package... 
+Quitting the Automata package... 
+Quitting the Compass package... 
+Quitting the BMC package... 
+Resetting the SBMC module...
+Done 
+Done 
+Forcing destruction of previoulsy created BOOL FSM...
+Forcing destruction of previoulsy created SEXP FSM...
+
+Successful termination
+-- no proof or counterexample found with bound 0
+-- no proof or counterexample found with bound 1
+-- no proof or counterexample found with bound 2
+-- invariant !(rdfi_i.fsm_state = reversed_state)   is true

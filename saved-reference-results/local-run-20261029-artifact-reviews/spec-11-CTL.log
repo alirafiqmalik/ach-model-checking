@@ -1,0 +1,1488 @@
+*** This is nuXmv 2.1.0 (compiled on Fri Nov 29 13:41:31 2024)
+*** Copyright (c) 2014-2024, Fondazione Bruno Kessler
+*** For more information on nuXmv see https://nuxmv.fbk.eu
+*** or email to <nuxmv@fbk.eu>.
+*** Please report bugs at Please report bugs to <nusmv-users@fbk.eu>
+*** (click on "Login Anonymously" to access)
+*** Alternatively write to <nuxmv@fbk.eu>.
+
+*** This version of nuXmv is linked to NuSMV 2.7.0.
+*** For more information on NuSMV see <http://nusmv.fbk.eu>
+*** or email to <nusmv-users@fbk.eu>.
+*** Copyright (C) 2010-2024, Fondazione Bruno Kessler
+
+*** This version of nuXmv is linked to the CUDD library version 2.4.1
+*** Copyright (c) 1995-2004, Regents of the University of Colorado
+
+*** This version of nuXmv is linked to the MiniSat SAT solver. 
+*** See http://minisat.se/MiniSat.html
+*** Copyright (c) 2003-2006, Niklas Een, Niklas Sorensson
+*** Copyright (c) 2007-2010, Niklas Sorensson
+
+*** This version of nuXmv is linked to MathSAT
+*** Copyright (C) 2009-2019 by Fondazione Bruno Kessler
+*** Copyright (C) 2009-2019 by University of Trento and others
+*** See http://mathsat.fbk.eu
+
+Parsing file "/home/ahm/Desktop/project/artifacts-eval/acm-ccs-ach-payments/eval_review/source-ach-model-checking/output/_main_model.smv" ..... done.
+Flattening hierarchy...
+FlatHierarchy: calculating vars constraints...
+FlatHierarchy: vars constraints calculated
+checking for multiple assignments in process ...
+Done
+checking for circular assignments in process ...
+Done
+TraceMgr: registered layer 'model'
+...done
+Building variables...
+Initializing global boolean encoding...
+Global boolean encoding initialized.
+
+Heuristics "basic" is going to be used to create varordering statically
+
+Initializing global BDD encoding...
+Global BDD encoding initialized.
+...done
+
+Creating the scalar FSM...
+FlatHierarchy: calculating vars constraints...
+FlatHierarchy: vars constraints calculated
+Triggering postponed calculation of vars constraints
+FlatHierarchy: calculating vars constraints...
+FlatHierarchy: vars constraints calculated
+Successfully created the scalar FSM
+
+Creating the boolean FSM...
+Triggering postponed calculation of vars constraints
+FlatHierarchy: calculating vars constraints...
+FlatHierarchy: vars constraints calculated
+Warning: cannot assign value 4 to variable env_i.window_count
+Warning: cannot assign value 3 to variable recv_0.md_received_credits
+Warning: cannot assign value 3 to variable recv_1.md_received_credits
+Warning: cannot assign value 2 to variable recv_0.target_originator
+Warning: cannot assign value 2 to variable recv_1.target_originator
+Warning: cannot assign value 3 to variable orig_0.tx_count
+Warning: cannot assign value 4 to variable orig_0.md_reinit_count
+Warning: cannot assign value 3 to variable orig_1.tx_count
+Warning: cannot assign value 4 to variable orig_1.md_reinit_count
+Warning: cannot assign value 4 to variable rdfi_i.c_info_req_payload_tx_id
+Warning: cannot assign value 4 to variable rdfi_i.c_dollar_req_payload_tx_id
+Successfully created the boolean FSM
+
+The boolean sexp model has been built from file /home/ahm/Desktop/project/artifacts-eval/acm-ccs-ach-payments/eval_review/source-ach-model-checking/output/_main_model.smv.
+Initializing the BMC package... 
+
+Initializing global BE encoding...
+Global BE encoding initialized.
+Initializing the SBMC package... 
+Done 
+Building the BMC FSM... 
+Done 
+
+Generating invariant problem (Een/Sorensson)
+
+Building the base for k=0
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 0
+ Length of list of clauses = 1
+ Length of list of variables = 0
+The false constant has been added to a solver
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.000000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=0
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 2348
+ Length of list of clauses = 3
+ Length of list of variables = 3
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.000000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=1
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 0
+ Length of list of clauses = 1
+ Length of list of variables = 0
+The false constant has been added to a solver
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.000000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=1
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 3542
+ Length of list of clauses = 5590
+ Length of list of variables = 782
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.007000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=2
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 4410
+ Length of list of clauses = 5623
+ Length of list of variables = 1227
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.000000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=2
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 5265
+ Length of list of clauses = 11051
+ Length of list of variables = 1236
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.014000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=3
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 6600
+ Length of list of clauses = 10414
+ Length of list of variables = 1644
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.009000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=3
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 7841
+ Length of list of clauses = 17172
+ Length of list of variables = 1653
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.021000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=4
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 9692
+ Length of list of clauses = 15199
+ Length of list of variables = 2061
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.012000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=4
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 11547
+ Length of list of clauses = 23961
+ Length of list of variables = 2070
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.057000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=5
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 13596
+ Length of list of clauses = 19982
+ Length of list of variables = 2478
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.025000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=5
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 16305
+ Length of list of clauses = 31418
+ Length of list of variables = 2487
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.049000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=6
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 18551
+ Length of list of clauses = 24765
+ Length of list of variables = 2895
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.024000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=6
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 22283
+ Length of list of clauses = 39543
+ Length of list of variables = 2904
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.082000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=7
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 24726
+ Length of list of clauses = 29548
+ Length of list of variables = 3312
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.027000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=7
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 29647
+ Length of list of clauses = 48336
+ Length of list of variables = 3321
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.131000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=8
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 32287
+ Length of list of clauses = 34331
+ Length of list of variables = 3729
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.039000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=8
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 38563
+ Length of list of clauses = 57797
+ Length of list of variables = 3738
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.110000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=9
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 41400
+ Length of list of clauses = 39114
+ Length of list of variables = 4146
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.055000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=9
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 49197
+ Length of list of clauses = 67926
+ Length of list of variables = 4155
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.279000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=10
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 52231
+ Length of list of clauses = 43897
+ Length of list of variables = 4563
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.055000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=10
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 61715
+ Length of list of clauses = 78723
+ Length of list of variables = 4572
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.439000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=11
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 64946
+ Length of list of clauses = 48680
+ Length of list of variables = 4980
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.056000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=11
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 76283
+ Length of list of clauses = 90188
+ Length of list of variables = 4989
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.615000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=12
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 79711
+ Length of list of clauses = 53463
+ Length of list of variables = 5397
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.107000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=12
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 93067
+ Length of list of clauses = 102321
+ Length of list of variables = 5406
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.588000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=13
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 96692
+ Length of list of clauses = 58246
+ Length of list of variables = 5814
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.126000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=13
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 112233
+ Length of list of clauses = 115122
+ Length of list of variables = 5823
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 1.515000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=14
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 116055
+ Length of list of clauses = 63029
+ Length of list of variables = 6231
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.288000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=14
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 133947
+ Length of list of clauses = 128591
+ Length of list of variables = 6240
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.703000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=15
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 137966
+ Length of list of clauses = 67812
+ Length of list of variables = 6648
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.181000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=15
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 158375
+ Length of list of clauses = 142728
+ Length of list of variables = 6657
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.924000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=16
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 162591
+ Length of list of clauses = 72595
+ Length of list of variables = 7065
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.348000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=16
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 185683
+ Length of list of clauses = 157533
+ Length of list of variables = 7074
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 1.892000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=17
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 190096
+ Length of list of clauses = 77378
+ Length of list of variables = 7482
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.205000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=17
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 216037
+ Length of list of clauses = 173006
+ Length of list of variables = 7491
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 1.604000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=18
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 220647
+ Length of list of clauses = 82161
+ Length of list of variables = 7899
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.329000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=18
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 249603
+ Length of list of clauses = 189147
+ Length of list of variables = 7908
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 1.324000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=19
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 254410
+ Length of list of clauses = 86944
+ Length of list of variables = 8316
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.244000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=19
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 286547
+ Length of list of clauses = 205956
+ Length of list of variables = 8325
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 2.697000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=20
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 291551
+ Length of list of clauses = 91727
+ Length of list of variables = 8733
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.443000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=20
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 327035
+ Length of list of clauses = 223433
+ Length of list of variables = 8742
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 3.588000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=21
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 332236
+ Length of list of clauses = 96510
+ Length of list of variables = 9150
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.335000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=21
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 371233
+ Length of list of clauses = 241578
+ Length of list of variables = 9159
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 2.803000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=22
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 376631
+ Length of list of clauses = 101293
+ Length of list of variables = 9567
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.477000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=22
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 419307
+ Length of list of clauses = 260391
+ Length of list of variables = 9576
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 5.393000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=23
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 424902
+ Length of list of clauses = 106076
+ Length of list of variables = 9984
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.698000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=23
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 471423
+ Length of list of clauses = 279872
+ Length of list of variables = 9993
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 2.374000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=24
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 477215
+ Length of list of clauses = 110859
+ Length of list of variables = 10401
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 1.177000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=24
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 527747
+ Length of list of clauses = 300021
+ Length of list of variables = 10410
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 6.469000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=25
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 533736
+ Length of list of clauses = 115642
+ Length of list of variables = 10818
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 0.768000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=25
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 588445
+ Length of list of clauses = 320838
+ Length of list of variables = 10827
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 8.192000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=26
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 594631
+ Length of list of clauses = 120425
+ Length of list of variables = 11235
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 1.361000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=26
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 653683
+ Length of list of clauses = 342323
+ Length of list of variables = 11244
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 7.507000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=27
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 660066
+ Length of list of clauses = 125208
+ Length of list of variables = 11652
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 1.640000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=27
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 723627
+ Length of list of clauses = 364476
+ Length of list of variables = 11661
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 8.629000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=28
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 730207
+ Length of list of clauses = 129991
+ Length of list of variables = 12069
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 1.587000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=28
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 798443
+ Length of list of clauses = 387297
+ Length of list of variables = 12078
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 4.507000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=29
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 805220
+ Length of list of clauses = 134774
+ Length of list of variables = 12486
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 1.528000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=29
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 878297
+ Length of list of clauses = 410786
+ Length of list of variables = 12495
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 12.259000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=30
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 885271
+ Length of list of clauses = 139557
+ Length of list of variables = 12903
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 1.895000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=30
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 963355
+ Length of list of clauses = 434943
+ Length of list of variables = 12912
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 16.288000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=31
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 970526
+ Length of list of clauses = 144340
+ Length of list of variables = 13320
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 2.168000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=31
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 1053783
+ Length of list of clauses = 459768
+ Length of list of variables = 13329
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 8.118000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=32
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 1061151
+ Length of list of clauses = 149123
+ Length of list of variables = 13737
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 2.399000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=32
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 1149747
+ Length of list of clauses = 485261
+ Length of list of variables = 13746
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 16.733000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=33
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 1157312
+ Length of list of clauses = 153906
+ Length of list of variables = 14154
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 3.642000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=33
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 1251413
+ Length of list of clauses = 511422
+ Length of list of variables = 14163
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 27.165000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=34
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 1259175
+ Length of list of clauses = 158689
+ Length of list of variables = 14571
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 2.224000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=34
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 1358947
+ Length of list of clauses = 538251
+ Length of list of variables = 14580
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 29.132000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=35
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 1366906
+ Length of list of clauses = 163472
+ Length of list of variables = 14988
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 2.548000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=35
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 1472515
+ Length of list of clauses = 565748
+ Length of list of variables = 14997
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 21.512000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=36
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 1480671
+ Length of list of clauses = 168255
+ Length of list of variables = 15405
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 1.905000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=36
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 1592283
+ Length of list of clauses = 593913
+ Length of list of variables = 15414
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 19.266000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=37
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 1600636
+ Length of list of clauses = 173038
+ Length of list of variables = 15822
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 2.632000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=37
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 1718417
+ Length of list of clauses = 622746
+ Length of list of variables = 15831
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 35.096000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=38
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 1726967
+ Length of list of clauses = 177821
+ Length of list of variables = 16239
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 1.917000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=38
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 1851083
+ Length of list of clauses = 652247
+ Length of list of variables = 16248
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 16.772000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=39
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 1859830
+ Length of list of clauses = 182604
+ Length of list of variables = 16656
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 2.253000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=39
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 1990447
+ Length of list of clauses = 682416
+ Length of list of variables = 16665
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 38.328000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=40
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 1999391
+ Length of list of clauses = 187387
+ Length of list of variables = 17073
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 4.256000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=40
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 2136675
+ Length of list of clauses = 713253
+ Length of list of variables = 17082
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 23.958000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=41
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 2145816
+ Length of list of clauses = 192170
+ Length of list of variables = 17490
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 4.268000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=41
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 2289933
+ Length of list of clauses = 744758
+ Length of list of variables = 17499
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 50.963000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=42
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 2299271
+ Length of list of clauses = 196953
+ Length of list of variables = 17907
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 3.060000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=42
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 2450387
+ Length of list of clauses = 776931
+ Length of list of variables = 17916
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 44.403000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=43
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 2459922
+ Length of list of clauses = 201736
+ Length of list of variables = 18324
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 2.329000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=43
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 2618203
+ Length of list of clauses = 809772
+ Length of list of variables = 18333
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 31.648000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=44
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 2627935
+ Length of list of clauses = 206519
+ Length of list of variables = 18741
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 2.888000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=44
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 2793547
+ Length of list of clauses = 843281
+ Length of list of variables = 18750
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 75.263000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=45
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 2803476
+ Length of list of clauses = 211302
+ Length of list of variables = 19158
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 6.467000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=45
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 2976585
+ Length of list of clauses = 877458
+ Length of list of variables = 19167
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 52.485000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=46
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 2986711
+ Length of list of clauses = 216085
+ Length of list of variables = 19575
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 2.241000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=46
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 3167483
+ Length of list of clauses = 912303
+ Length of list of variables = 19584
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 67.294000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=47
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 3177806
+ Length of list of clauses = 220868
+ Length of list of variables = 19992
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 3.951000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=47
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 3366407
+ Length of list of clauses = 947816
+ Length of list of variables = 20001
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 66.061000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=48
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 3376927
+ Length of list of clauses = 225651
+ Length of list of variables = 20409
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 4.288000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=48
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 3573523
+ Length of list of clauses = 983997
+ Length of list of variables = 20418
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 78.879000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=49
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 3584240
+ Length of list of clauses = 230434
+ Length of list of variables = 20826
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 3.484000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=49
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 3788997
+ Length of list of clauses = 1020846
+ Length of list of variables = 20835
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 63.427000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the base for k=50
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 3799911
+ Length of list of clauses = 235217
+ Length of list of variables = 21243
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 3.700000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+
+Building the step for k=50
+Creating a SAT solver instance 'MiniSat' ...
+Created an SAT solver instance 'MiniSat'
+
+Converting the BE problem into CNF problem...
+ Conversion returned maximum variable index = 4012995
+ Length of list of clauses = 1058363
+ Length of list of variables = 21252
+Invoking solver 'MiniSat'...
+Solver 'MiniSat' returned after 124.975000 secs 
+Destroying a SAT solver instance 'MiniSat'
+Done
+Quitting the GR commands... 
+Quitting the param addon... 
+Quitting the kltl addon... 
+Quitting Trace Property Set (CTP) package... 
+Quitting the hasdel addon... 
+Quitting the Trace_Executor package... 
+Quitting the Sym2ex package... 
+Quitting the Abstraction package...
+Quitting the AbsBmc package...
+Quitting the QE package...
+Quitting the Cores package... 
+Quitting the Cegar package...
+Quitting the Mathsat package...
+Quitting the Invgen package... 
+Quitting the GR package... 
+Quitting the BaPsl package... 
+Quitting the Automata package... 
+Quitting the Compass package... 
+Quitting the BMC package... 
+Resetting the SBMC module...
+Done 
+Done 
+Forcing destruction of previoulsy created BOOL FSM...
+Forcing destruction of previoulsy created SEXP FSM...
+
+Successful termination
+-- no proof or counterexample found with bound 0
+-- no proof or counterexample found with bound 1
+-- no proof or counterexample found with bound 2
+-- no proof or counterexample found with bound 3
+-- no proof or counterexample found with bound 4
+-- no proof or counterexample found with bound 5
+-- no proof or counterexample found with bound 6
+-- no proof or counterexample found with bound 7
+-- no proof or counterexample found with bound 8
+-- no proof or counterexample found with bound 9
+-- no proof or counterexample found with bound 10
+-- no proof or counterexample found with bound 11
+-- no proof or counterexample found with bound 12
+-- no proof or counterexample found with bound 13
+-- no proof or counterexample found with bound 14
+-- no proof or counterexample found with bound 15
+-- no proof or counterexample found with bound 16
+-- no proof or counterexample found with bound 17
+-- no proof or counterexample found with bound 18
+-- no proof or counterexample found with bound 19
+-- no proof or counterexample found with bound 20
+-- no proof or counterexample found with bound 21
+-- no proof or counterexample found with bound 22
+-- no proof or counterexample found with bound 23
+-- no proof or counterexample found with bound 24
+-- no proof or counterexample found with bound 25
+-- no proof or counterexample found with bound 26
+-- no proof or counterexample found with bound 27
+-- no proof or counterexample found with bound 28
+-- no proof or counterexample found with bound 29
+-- no proof or counterexample found with bound 30
+-- no proof or counterexample found with bound 31
+-- no proof or counterexample found with bound 32
+-- no proof or counterexample found with bound 33
+-- no proof or counterexample found with bound 34
+-- no proof or counterexample found with bound 35
+-- no proof or counterexample found with bound 36
+-- no proof or counterexample found with bound 37
+-- no proof or counterexample found with bound 38
+-- no proof or counterexample found with bound 39
+-- no proof or counterexample found with bound 40
+-- no proof or counterexample found with bound 41
+-- no proof or counterexample found with bound 42
+-- no proof or counterexample found with bound 43
+-- no proof or counterexample found with bound 44
+-- no proof or counterexample found with bound 45
+-- no proof or counterexample found with bound 46
+-- no proof or counterexample found with bound 47
+-- no proof or counterexample found with bound 48
+-- no proof or counterexample found with bound 49
+-- no proof or counterexample found with bound 50
+-- cannot prove the invariant !(recv_0.fsm_state = rejected_md)  is true or false.

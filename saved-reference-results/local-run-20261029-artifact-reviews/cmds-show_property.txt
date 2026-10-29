@@ -1,0 +1,5 @@
+set on_failure_script_quits
+read_model -i /home/ahm/Desktop/project/artifacts-eval/acm-ccs-ach-payments/eval_review/source-ach-model-checking/output/_main_model.smv
+flatten_hierarchy
+show_property
+quit
