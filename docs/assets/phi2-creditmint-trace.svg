@@ -1,0 +1,219 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="644" viewBox="0 0 1200 644" role="img" aria-labelledby="t d">
+<title id="t">Phi2 creditMINT counterexample trace</title>
+<desc id="d">Swimlane timeline of the 30-state nuXmv counterexample for Phi2. The MICRO credit settles at state 21, micro-deposit confirmed at 22, linked at 23, MICRO debit returned R16 at 30, leaving 1 credit and 0 debits.</desc>
+
+<style>
+  svg { --card:#f6f8fa; --edge:#d0d7de; --ink:#1f2328; --ink2:#59636e; --muted:#818b98; --grid:#e3e6ea;
+        --good:#1a7f37; --good-bg:#dafbe1; --bad:#cf222e; --bad-bg:#ffebe9; --warn:#9a6700; --warn-bg:#fff8c5;
+        --neu:#57606a; --neu-bg:#eaeef2; --acc:#0969da; --acc-bg:#ddf4ff; --vio:#8250df; --vio-bg:#fbefff; }
+  @media (prefers-color-scheme: dark) {
+    svg { --card:#161b22; --edge:#30363d; --ink:#e6edf3; --ink2:#9198a1; --muted:#768390; --grid:#262c36;
+          --good:#3fb950; --good-bg:#12261e; --bad:#f85149; --bad-bg:#2d1418; --warn:#d29922; --warn-bg:#272115;
+          --neu:#8b949e; --neu-bg:#21262d; --acc:#4493f8; --acc-bg:#121d2f; --vio:#ab7df8; --vio-bg:#1f1733; }
+  }
+  text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; fill: var(--ink); }
+  .mono { font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace; }
+  .ink2 { fill: var(--ink2); } .muted { fill: var(--muted); }
+  .card { fill: var(--card); stroke: var(--edge); }
+  .grid { stroke: var(--grid); stroke-width: 1; }
+  .good { fill: var(--good); } .bad { fill: var(--bad); } .warn { fill: var(--warn); } .neu { fill: var(--neu); } .acc { fill: var(--acc); } .vio { fill: var(--vio); }
+  .good-bg { fill: var(--good-bg); stroke: var(--good); } .bad-bg { fill: var(--bad-bg); stroke: var(--bad); }
+  .warn-bg { fill: var(--warn-bg); stroke: var(--warn); } .neu-bg { fill: var(--neu-bg); stroke: var(--neu); }
+  .acc-bg { fill: var(--acc-bg); stroke: var(--acc); } .vio-bg { fill: var(--vio-bg); stroke: var(--vio); }
+  .s-good { stroke: var(--good); } .s-bad { stroke: var(--bad); } .s-acc { stroke: var(--acc); } .s-ink2 { stroke: var(--ink2); } .s-muted { stroke: var(--muted); }
+</style>
+
+<rect x="0.5" y="0.5" width="1199" height="643" rx="12" class="card"/>
+<text x="24" y="38" font-size="20" font-weight="600" text-anchor="start">Φ2 counterexample (A2 creditMINT): 30-state BMC trace from spec-1-INV.log</text>
+<text x="24" y="60" font-size="12.5" font-weight="400" text-anchor="start" class="ink2">Originator 1 links Receiver 1’s account by micro-deposit. The MICRO credit settles and the link succeeds, then the recovery MICRO debit is returned R16 (account DEBIT_BLOCKED).</text>
+<text x="24" y="78" font-size="12.5" font-weight="400" text-anchor="start" class="ink2">When the verification cycle completes, verification_credits = 1 ≠ verification_debits = 0, so the Φ2 invariant is false. The return window is still open (phase ph_batch_closed).</text>
+<text x="249.7" y="140" font-size="10.5" font-weight="400" text-anchor="middle" class="muted">1</text>
+<text x="281.1" y="140" font-size="10.5" font-weight="400" text-anchor="middle" class="muted">2</text>
+<text x="312.5" y="140" font-size="10.5" font-weight="400" text-anchor="middle" class="muted">3</text>
+<text x="343.9" y="140" font-size="10.5" font-weight="400" text-anchor="middle" class="muted">4</text>
+<text x="375.29999999999995" y="140" font-size="10.5" font-weight="400" text-anchor="middle" class="muted">5</text>
+<text x="406.7" y="140" font-size="10.5" font-weight="400" text-anchor="middle" class="muted">6</text>
+<text x="438.1" y="140" font-size="10.5" font-weight="400" text-anchor="middle" class="muted">7</text>
+<text x="469.5" y="140" font-size="10.5" font-weight="400" text-anchor="middle" class="muted">8</text>
+<text x="500.9" y="140" font-size="10.5" font-weight="400" text-anchor="middle" class="muted">9</text>
+<text x="532.3" y="140" font-size="10.5" font-weight="400" text-anchor="middle" class="muted">10</text>
+<text x="563.7" y="140" font-size="10.5" font-weight="400" text-anchor="middle" class="muted">11</text>
+<text x="595.0999999999999" y="140" font-size="10.5" font-weight="400" text-anchor="middle" class="muted">12</text>
+<text x="626.5" y="140" font-size="10.5" font-weight="400" text-anchor="middle" class="muted">13</text>
+<text x="657.9" y="140" font-size="10.5" font-weight="400" text-anchor="middle" class="muted">14</text>
+<text x="689.3" y="140" font-size="10.5" font-weight="400" text-anchor="middle" class="muted">15</text>
+<text x="720.7" y="140" font-size="10.5" font-weight="400" text-anchor="middle" class="muted">16</text>
+<text x="752.1" y="140" font-size="10.5" font-weight="400" text-anchor="middle" class="muted">17</text>
+<text x="783.5" y="140" font-size="10.5" font-weight="400" text-anchor="middle" class="muted">18</text>
+<text x="814.9" y="140" font-size="10.5" font-weight="400" text-anchor="middle" class="muted">19</text>
+<text x="846.3" y="140" font-size="10.5" font-weight="400" text-anchor="middle" class="muted">20</text>
+<text x="877.6999999999999" y="140" font-size="10.5" font-weight="700" text-anchor="middle">21</text>
+<text x="909.1" y="140" font-size="10.5" font-weight="700" text-anchor="middle">22</text>
+<text x="940.5" y="140" font-size="10.5" font-weight="700" text-anchor="middle">23</text>
+<text x="971.9" y="140" font-size="10.5" font-weight="400" text-anchor="middle" class="muted">24</text>
+<text x="1003.3" y="140" font-size="10.5" font-weight="400" text-anchor="middle" class="muted">25</text>
+<text x="1034.6999999999998" y="140" font-size="10.5" font-weight="400" text-anchor="middle" class="muted">26</text>
+<text x="1066.1" y="140" font-size="10.5" font-weight="400" text-anchor="middle" class="muted">27</text>
+<text x="1097.5" y="140" font-size="10.5" font-weight="400" text-anchor="middle" class="muted">28</text>
+<text x="1128.9" y="140" font-size="10.5" font-weight="400" text-anchor="middle" class="muted">29</text>
+<text x="1160.3" y="140" font-size="10.5" font-weight="700" text-anchor="middle">30</text>
+<text x="24" y="140" font-size="10.5" font-weight="400" text-anchor="start" class="muted">trace state →</text>
+<line x1="877.7" y1="144" x2="877.7" y2="606" class="s-good" stroke-width="1.5" stroke-dasharray="3 3" opacity="0.8"/>
+<line x1="909.1" y1="144" x2="909.1" y2="606" class="s-good" stroke-width="1.5" stroke-dasharray="3 3" opacity="0.8"/>
+<line x1="940.5" y1="144" x2="940.5" y2="606" class="s-good" stroke-width="1.5" stroke-dasharray="3 3" opacity="0.8"/>
+<line x1="1160.3" y1="144" x2="1160.3" y2="606" class="s-bad" stroke-width="1.5" stroke-dasharray="3 3" opacity="0.8"/>
+<text x="871.6999999999999" y="102" font-size="11.5" font-weight="600" text-anchor="end" class="good">21: credit settled</text>
+<circle cx="877.7" cy="98" r="3" class="good"/>
+<text x="903.1" y="120" font-size="11.5" font-weight="600" text-anchor="end" class="good">22: micro-deposit confirmed</text>
+<circle cx="909.1" cy="116" r="3" class="good"/>
+<text x="946.5" y="102" font-size="11.5" font-weight="600" text-anchor="start" class="good">23: account linked</text>
+<circle cx="940.5" cy="98" r="3" class="good"/>
+<text x="1154.3" y="120" font-size="11.5" font-weight="600" text-anchor="end" class="bad">30: R16 return · Φ2 false</text>
+<circle cx="1160.3" cy="116" r="3" class="bad"/>
+<text x="24" y="165" font-size="12" font-weight="500" text-anchor="start">Environment phase</text>
+<rect x="235.0" y="148" width="217.8" height="26" rx="5" class="neu-bg" stroke-width="1"/>
+<text x="343.9" y="165" font-size="10.5" font-weight="400" text-anchor="middle" class="mono">ph_idle</text>
+<rect x="454.8" y="148" width="29.4" height="26" rx="5" class="acc-bg" stroke-width="1"/>
+<text x="469.49999999999994" y="165" font-size="10.5" font-weight="400" text-anchor="middle" class="mono">ph_…</text>
+<rect x="486.2" y="148" width="688.8" height="26" rx="5" class="acc-bg" stroke-width="1"/>
+<text x="830.5999999999999" y="165" font-size="10.5" font-weight="400" text-anchor="middle" class="mono">ph_batch_closed</text>
+<text x="24" y="199" font-size="12" font-weight="500" text-anchor="start">Originator 1 · fsm_state</text>
+<rect x="235.0" y="182" width="29.4" height="26" rx="5" class="neu-bg" stroke-width="1"/>
+<text x="249.7" y="199" font-size="10.5" font-weight="400" text-anchor="middle" class="mono">idle</text>
+<rect x="266.4" y="182" width="186.4" height="26" rx="5" class="acc-bg" stroke-width="1"/>
+<text x="359.59999999999997" y="199" font-size="10.5" font-weight="400" text-anchor="middle" class="mono">linking_micro</text>
+<rect x="454.8" y="182" width="29.4" height="26" rx="5" class="acc-bg" stroke-width="1"/>
+<text x="469.49999999999994" y="199" font-size="10.5" font-weight="400" text-anchor="middle" class="mono">ini…</text>
+<rect x="486.2" y="182" width="437.6" height="26" rx="5" class="warn-bg" stroke-width="1"/>
+<text x="705.0" y="199" font-size="10.5" font-weight="400" text-anchor="middle" class="mono">awaiting_md_confirm</text>
+<rect x="925.8" y="182" width="249.2" height="26" rx="5" class="good-bg" stroke-width="1"/>
+<text x="1050.3999999999999" y="199" font-size="10.5" font-weight="400" text-anchor="middle" class="mono">linked_ok</text>
+<text x="24" y="233" font-size="12" font-weight="500" text-anchor="start">Originator 1 · md_state</text>
+<rect x="235.0" y="216" width="217.8" height="26" rx="5" class="neu-bg" stroke-width="1"/>
+<text x="343.9" y="233" font-size="10.5" font-weight="400" text-anchor="middle" class="mono">md_none</text>
+<rect x="454.8" y="216" width="29.4" height="26" rx="5" class="acc-bg" stroke-width="1"/>
+<text x="469.49999999999994" y="233" font-size="10.5" font-weight="400" text-anchor="middle" class="mono">md_…</text>
+<rect x="486.2" y="216" width="29.4" height="26" rx="5" class="acc-bg" stroke-width="1"/>
+<text x="500.9" y="233" font-size="10.5" font-weight="400" text-anchor="middle" class="mono">md_…</text>
+<rect x="517.6" y="216" width="374.8" height="26" rx="5" class="warn-bg" stroke-width="1"/>
+<text x="704.9999999999999" y="233" font-size="10.5" font-weight="400" text-anchor="middle" class="mono">md_awaiting_confirm</text>
+<rect x="894.4" y="216" width="280.6" height="26" rx="5" class="good-bg" stroke-width="1"/>
+<text x="1034.7" y="233" font-size="10.5" font-weight="400" text-anchor="middle" class="mono">md_confirmed</text>
+<text x="24" y="267" font-size="12" font-weight="500" text-anchor="start">tx_0 · MICRO credit</text>
+<rect x="235.0" y="250" width="249.2" height="26" rx="5" class="neu-bg" stroke-width="1"/>
+<text x="359.6" y="267" font-size="10.5" font-weight="400" text-anchor="middle" class="mono">not_submitted</text>
+<rect x="486.2" y="250" width="29.4" height="26" rx="5" class="acc-bg" stroke-width="1"/>
+<text x="500.9" y="267" font-size="10.5" font-weight="400" text-anchor="middle" class="mono">sub…</text>
+<rect x="517.6" y="250" width="92.2" height="26" rx="5" class="acc-bg" stroke-width="1"/>
+<text x="563.6999999999999" y="267" font-size="10.5" font-weight="400" text-anchor="middle" class="mono">batched</text>
+<rect x="611.8" y="250" width="249.2" height="26" rx="5" class="warn-bg" stroke-width="1"/>
+<text x="736.4" y="267" font-size="10.5" font-weight="400" text-anchor="middle" class="mono">pending_settlement</text>
+<rect x="863.0" y="250" width="312.0" height="26" rx="5" class="good-bg" stroke-width="1"/>
+<text x="1019.0" y="267" font-size="10.5" font-weight="400" text-anchor="middle" class="mono">settled</text>
+<text x="24" y="301" font-size="12" font-weight="500" text-anchor="start">tx_1 · MICRO debit</text>
+<rect x="235.0" y="284" width="249.2" height="26" rx="5" class="neu-bg" stroke-width="1"/>
+<text x="359.6" y="301" font-size="10.5" font-weight="400" text-anchor="middle" class="mono">not_submitted</text>
+<rect x="486.2" y="284" width="29.4" height="26" rx="5" class="acc-bg" stroke-width="1"/>
+<text x="500.9" y="301" font-size="10.5" font-weight="400" text-anchor="middle" class="mono">sub…</text>
+<rect x="517.6" y="284" width="374.8" height="26" rx="5" class="acc-bg" stroke-width="1"/>
+<text x="704.9999999999999" y="301" font-size="10.5" font-weight="400" text-anchor="middle" class="mono">batched</text>
+<rect x="894.4" y="284" width="249.2" height="26" rx="5" class="warn-bg" stroke-width="1"/>
+<text x="1019.0" y="301" font-size="10.5" font-weight="400" text-anchor="middle" class="mono">pending_settlement</text>
+<rect x="1145.6" y="284" width="29.4" height="26" rx="5" class="bad-bg" stroke-width="1"/>
+<text x="1160.3" y="301" font-size="10.5" font-weight="400" text-anchor="middle" class="mono">ret…</text>
+<text x="24" y="335" font-size="12" font-weight="500" text-anchor="start">Receiver 1 · fsm_state</text>
+<line x1="234" y1="331.0" x2="1176" y2="331.0" class="grid" stroke-width="2"/>
+<rect x="299.8" y="328.0" width="25.4" height="6" rx="3" class="acc-bg" stroke-width="1"/>
+<rect x="394.0" y="328.0" width="25.4" height="6" rx="3" class="acc-bg" stroke-width="1"/>
+<rect x="425.4" y="328.0" width="25.4" height="6" rx="3" class="good-bg" stroke-width="1"/>
+<rect x="488.2" y="328.0" width="25.4" height="6" rx="3" class="acc-bg" stroke-width="1"/>
+<rect x="519.6" y="328.0" width="25.4" height="6" rx="3" class="good-bg" stroke-width="1"/>
+<rect x="613.8" y="328.0" width="25.4" height="6" rx="3" class="acc-bg" stroke-width="1"/>
+<rect x="676.6" y="328.0" width="25.4" height="6" rx="3" class="acc-bg" stroke-width="1"/>
+<rect x="739.4" y="328.0" width="25.4" height="6" rx="3" class="acc-bg" stroke-width="1"/>
+<rect x="802.2" y="328.0" width="25.4" height="6" rx="3" class="acc-bg" stroke-width="1"/>
+<rect x="896.4" y="328.0" width="25.4" height="6" rx="3" class="acc-bg" stroke-width="1"/>
+<rect x="990.6" y="328.0" width="25.4" height="6" rx="3" class="acc-bg" stroke-width="1"/>
+<rect x="1022.0" y="328.0" width="25.4" height="6" rx="3" class="bad-bg" stroke-width="1"/>
+<rect x="1116.2" y="328.0" width="25.4" height="6" rx="3" class="acc-bg" stroke-width="1"/>
+<circle cx="438.1" cy="331.0" r="6" class="good"/>
+<text x="448.1" y="324.0" font-size="10.5" font-weight="600" text-anchor="start" class="mono">7: auth_granted</text>
+<circle cx="1034.7" cy="331.0" r="6" class="bad"/>
+<text x="1024.6999999999998" y="324.0" font-size="10.5" font-weight="600" text-anchor="end" class="mono">26: auth_revoked_state</text>
+<text x="24" y="369" font-size="12" font-weight="500" text-anchor="start">RDFI · fsm_state</text>
+<line x1="234" y1="365.0" x2="1176" y2="365.0" class="grid" stroke-width="2"/>
+<rect x="613.8" y="362.0" width="25.4" height="6" rx="3" class="acc-bg" stroke-width="1"/>
+<rect x="645.2" y="362.0" width="25.4" height="6" rx="3" class="acc-bg" stroke-width="1"/>
+<rect x="676.6" y="362.0" width="25.4" height="6" rx="3" class="acc-bg" stroke-width="1"/>
+<rect x="708.0" y="362.0" width="25.4" height="6" rx="3" class="acc-bg" stroke-width="1"/>
+<rect x="739.4" y="362.0" width="25.4" height="6" rx="3" class="warn-bg" stroke-width="1"/>
+<rect x="770.8" y="362.0" width="25.4" height="6" rx="3" class="good-bg" stroke-width="1"/>
+<rect x="896.4" y="362.0" width="25.4" height="6" rx="3" class="acc-bg" stroke-width="1"/>
+<rect x="927.8" y="362.0" width="25.4" height="6" rx="3" class="acc-bg" stroke-width="1"/>
+<rect x="959.2" y="362.0" width="25.4" height="6" rx="3" class="acc-bg" stroke-width="1"/>
+<rect x="990.6" y="362.0" width="25.4" height="6" rx="3" class="acc-bg" stroke-width="1"/>
+<rect x="1022.0" y="362.0" width="25.4" height="6" rx="3" class="warn-bg" stroke-width="1"/>
+<rect x="1053.4" y="362.0" width="25.4" height="6" rx="3" class="bad-bg" stroke-width="1"/>
+<rect x="1084.8" y="362.0" width="25.4" height="6" rx="3" class="bad-bg" stroke-width="1"/>
+<circle cx="783.5" cy="365.0" r="6" class="good"/>
+<text x="793.5" y="358.0" font-size="10.5" font-weight="600" text-anchor="start" class="mono">18: settled_state</text>
+<circle cx="1066.1" cy="365.0" r="6" class="bad"/>
+<text x="1056.1" y="358.0" font-size="10.5" font-weight="600" text-anchor="end" class="mono">27: returning · R16</text>
+<text x="24" y="403" font-size="12" font-weight="500" text-anchor="start" class="mono">verification_credits</text>
+<rect x="235.0" y="386" width="626.0" height="26" rx="5" class="neu-bg" stroke-width="1"/>
+<text x="548.0" y="403" font-size="10.5" font-weight="400" text-anchor="middle" class="mono">0</text>
+<rect x="863.0" y="386" width="312.0" height="26" rx="5" class="acc-bg" stroke-width="1"/>
+<text x="1019.0" y="403" font-size="10.5" font-weight="400" text-anchor="middle" class="mono">1</text>
+<text x="24" y="437" font-size="12" font-weight="500" text-anchor="start" class="mono">verification_debits</text>
+<rect x="235.0" y="420" width="940.0" height="26" rx="5" class="neu-bg" stroke-width="1"/>
+<text x="705.0" y="437" font-size="10.5" font-weight="400" text-anchor="middle" class="mono">0</text>
+<text x="24" y="471" font-size="12" font-weight="500" text-anchor="start" class="mono">verification_cycle_complete</text>
+<rect x="235.0" y="454" width="908.6" height="26" rx="5" class="neu-bg" stroke-width="1"/>
+<text x="689.3" y="471" font-size="10.5" font-weight="400" text-anchor="middle" class="mono">FALSE</text>
+<rect x="1145.6" y="454" width="29.4" height="26" rx="5" class="good-bg" stroke-width="1"/>
+<text x="1160.3" y="471" font-size="10.5" font-weight="400" text-anchor="middle" class="mono">TRUE</text>
+<text x="24" y="508" font-size="12" font-weight="500" text-anchor="start">c_info / c_dollar messages</text>
+<text x="24" y="524" font-size="10.5" font-weight="400" text-anchor="start" class="muted">(LINK_REQ pulses from Originator 0</text>
+<text x="24" y="537" font-size="10.5" font-weight="400" text-anchor="start" class="muted"> omitted; it submits no payment)</text>
+<circle cx="312.5" cy="496" r="3.5" class="acc"/>
+<line x1="312.5" y1="496" x2="312.5" y2="508" class="s-muted" stroke-width="1"/>
+<text x="317.5" y="518" font-size="10.5" font-weight="600" text-anchor="start" class="mono">LINK_REQ</text>
+<text x="317.5" y="530" font-size="10" font-weight="400" text-anchor="start" class="muted mono">o_1→bo</text>
+<circle cx="438.1" cy="496" r="3.5" class="acc"/>
+<line x1="438.1" y1="496" x2="438.1" y2="508" class="s-muted" stroke-width="1"/>
+<text x="443.1" y="518" font-size="10.5" font-weight="600" text-anchor="start" class="mono">LINK_ACK</text>
+<text x="443.1" y="530" font-size="10" font-weight="400" text-anchor="start" class="muted mono">bo→o_1</text>
+<circle cx="469.5" cy="496" r="3.5" class="acc"/>
+<line x1="469.5" y1="496" x2="469.5" y2="542" class="s-muted" stroke-width="1"/>
+<text x="474.5" y="552" font-size="10.5" font-weight="600" text-anchor="start" class="mono">GRANT_AUTH</text>
+<text x="474.5" y="564" font-size="10" font-weight="400" text-anchor="start" class="muted mono">r_1→o_1</text>
+<circle cx="500.9" cy="496" r="3.5" class="acc"/>
+<line x1="500.9" y1="496" x2="500.9" y2="576" class="s-muted" stroke-width="1"/>
+<text x="505.9" y="586" font-size="10.5" font-weight="600" text-anchor="start" class="mono">PAYMENT_INIT</text>
+<text x="505.9" y="598" font-size="10" font-weight="400" text-anchor="start" class="muted mono">o_1→bo</text>
+<circle cx="595.1" cy="496" r="3.5" class="acc"/>
+<line x1="595.1" y1="496" x2="595.1" y2="508" class="s-muted" stroke-width="1"/>
+<text x="600.0999999999999" y="518" font-size="10.5" font-weight="600" text-anchor="start" class="mono">SETTLEMENT_REQ</text>
+<text x="600.0999999999999" y="530" font-size="10" font-weight="400" text-anchor="start" class="muted mono">a→br</text>
+<circle cx="657.9" cy="496" r="3.5" class="acc"/>
+<line x1="657.9" y1="496" x2="657.9" y2="542" class="s-muted" stroke-width="1"/>
+<text x="662.9" y="552" font-size="10.5" font-weight="600" text-anchor="start" class="mono">BATCH_FORWARD</text>
+<text x="662.9" y="564" font-size="10" font-weight="400" text-anchor="start" class="muted mono">bo→a</text>
+<circle cx="846.3" cy="496" r="3.5" class="acc"/>
+<line x1="846.3" y1="496" x2="846.3" y2="508" class="s-muted" stroke-width="1"/>
+<text x="851.3" y="518" font-size="10.5" font-weight="600" text-anchor="start" class="mono">SETTLEMENT_ACK</text>
+<text x="851.3" y="530" font-size="10" font-weight="400" text-anchor="start" class="muted mono">br→a</text>
+<circle cx="846.3" cy="496" r="3.5" class="vio"/>
+<line x1="846.3" y1="496" x2="846.3" y2="542" class="s-muted" stroke-width="1"/>
+<text x="851.3" y="552" font-size="10.5" font-weight="600" text-anchor="start" class="mono">FUND_CREDIT</text>
+<text x="851.3" y="564" font-size="10" font-weight="400" text-anchor="start" class="muted mono">c_dollar</text>
+<circle cx="877.7" cy="496" r="3.5" class="acc"/>
+<line x1="877.7" y1="496" x2="877.7" y2="576" class="s-muted" stroke-width="1"/>
+<text x="882.6999999999999" y="586" font-size="10.5" font-weight="600" text-anchor="start" class="mono">SETTLEMENT_REQ</text>
+<text x="882.6999999999999" y="598" font-size="10" font-weight="400" text-anchor="start" class="muted mono">a→br</text>
+<circle cx="1128.9" cy="496" r="3.5" class="acc"/>
+<line x1="1128.9" y1="496" x2="1128.9" y2="508" class="s-muted" stroke-width="1"/>
+<text x="1123.9" y="518" font-size="10.5" font-weight="600" text-anchor="end" class="mono">RETURN_NOTICE</text>
+<text x="1123.9" y="530" font-size="10" font-weight="400" text-anchor="end" class="muted mono">br→a</text>
+<text x="24" y="630" font-size="10.5" font-weight="400" text-anchor="start" class="muted">Source: saved-reference-results/local-run-20261029-artifact-reviews/spec-1-INV.log (check_invar_bmc_inc -n 38 -k 60). Values carried forward between states, as nuXmv prints only changed variables.</text>
+</svg>

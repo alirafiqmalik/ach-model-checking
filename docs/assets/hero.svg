@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="356" viewBox="0 0 1200 356" role="img" aria-labelledby="t d">
+<title id="t">Credit Without Debit: ACH formal verification artifact</title>
+<desc id="d">Banner showing the five ACH participants, the two message buses, and the three violated properties Phi1 creditBLEED, Phi2 creditMINT, Phi3 creditRESET.</desc>
+
+<style>
+  svg { --card:#f6f8fa; --edge:#d0d7de; --ink:#1f2328; --ink2:#59636e; --muted:#818b98; --grid:#e3e6ea;
+        --good:#1a7f37; --good-bg:#dafbe1; --bad:#cf222e; --bad-bg:#ffebe9; --warn:#9a6700; --warn-bg:#fff8c5;
+        --neu:#57606a; --neu-bg:#eaeef2; --acc:#0969da; --acc-bg:#ddf4ff; --vio:#8250df; --vio-bg:#fbefff; }
+  @media (prefers-color-scheme: dark) {
+    svg { --card:#161b22; --edge:#30363d; --ink:#e6edf3; --ink2:#9198a1; --muted:#768390; --grid:#262c36;
+          --good:#3fb950; --good-bg:#12261e; --bad:#f85149; --bad-bg:#2d1418; --warn:#d29922; --warn-bg:#272115;
+          --neu:#8b949e; --neu-bg:#21262d; --acc:#4493f8; --acc-bg:#121d2f; --vio:#ab7df8; --vio-bg:#1f1733; }
+  }
+  text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; fill: var(--ink); }
+  .mono { font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace; }
+  .ink2 { fill: var(--ink2); } .muted { fill: var(--muted); }
+  .card { fill: var(--card); stroke: var(--edge); }
+  .grid { stroke: var(--grid); stroke-width: 1; }
+  .good { fill: var(--good); } .bad { fill: var(--bad); } .warn { fill: var(--warn); } .neu { fill: var(--neu); } .acc { fill: var(--acc); } .vio { fill: var(--vio); }
+  .good-bg { fill: var(--good-bg); stroke: var(--good); } .bad-bg { fill: var(--bad-bg); stroke: var(--bad); }
+  .warn-bg { fill: var(--warn-bg); stroke: var(--warn); } .neu-bg { fill: var(--neu-bg); stroke: var(--neu); }
+  .acc-bg { fill: var(--acc-bg); stroke: var(--acc); } .vio-bg { fill: var(--vio-bg); stroke: var(--vio); }
+  .s-good { stroke: var(--good); } .s-bad { stroke: var(--bad); } .s-acc { stroke: var(--acc); } .s-ink2 { stroke: var(--ink2); } .s-muted { stroke: var(--muted); }
+</style>
+
+<rect x="0.5" y="0.5" width="1199" height="355" rx="14" class="card"/>
+<text x="40" y="64" font-size="12.5" font-weight="700" text-anchor="start" class="acc" letter-spacing="0.12em">ACM CCS 2026 · ARTIFACT</text>
+<text x="40" y="108" font-size="40" font-weight="700" text-anchor="start">Credit Without Debit</text>
+<text x="40" y="140" font-size="18" font-weight="400" text-anchor="start" class="ink2">Formal verification of the ACH payment system with nuXmv</text>
+<rect x="40" y="176" width="196" height="54" rx="10" class="acc-bg" stroke-width="1.2"/>
+<text x="138.0" y="200" font-size="15" font-weight="600" text-anchor="middle">Originator</text>
+<text x="138.0" y="218" font-size="11.5" font-weight="400" text-anchor="middle" class="ink2">×2 · adversarial</text>
+<path d="M240 203.0 h20" class="s-ink2" stroke-width="1.6" fill="none"/>
+<path d="M260 199.0 l6 4 l-6 4 z" class="neu"/>
+<rect x="266" y="176" width="196" height="54" rx="10" class="neu-bg" stroke-width="1.2"/>
+<text x="364.0" y="200" font-size="15" font-weight="600" text-anchor="middle">ODFI</text>
+<text x="364.0" y="218" font-size="11.5" font-weight="400" text-anchor="middle" class="ink2">trusted bank</text>
+<path d="M466 203.0 h20" class="s-ink2" stroke-width="1.6" fill="none"/>
+<path d="M486 199.0 l6 4 l-6 4 z" class="neu"/>
+<rect x="492" y="176" width="196" height="54" rx="10" class="neu-bg" stroke-width="1.2"/>
+<text x="590.0" y="200" font-size="15" font-weight="600" text-anchor="middle">ACH Operator</text>
+<text x="590.0" y="218" font-size="11.5" font-weight="400" text-anchor="middle" class="ink2">trusted</text>
+<path d="M692 203.0 h20" class="s-ink2" stroke-width="1.6" fill="none"/>
+<path d="M712 199.0 l6 4 l-6 4 z" class="neu"/>
+<rect x="718" y="176" width="196" height="54" rx="10" class="neu-bg" stroke-width="1.2"/>
+<text x="816.0" y="200" font-size="15" font-weight="600" text-anchor="middle">RDFI</text>
+<text x="816.0" y="218" font-size="11.5" font-weight="400" text-anchor="middle" class="ink2">trusted bank</text>
+<path d="M918 203.0 h20" class="s-ink2" stroke-width="1.6" fill="none"/>
+<path d="M938 199.0 l6 4 l-6 4 z" class="neu"/>
+<rect x="944" y="176" width="196" height="54" rx="10" class="acc-bg" stroke-width="1.2"/>
+<text x="1042.0" y="200" font-size="15" font-weight="600" text-anchor="middle">Receiver</text>
+<text x="1042.0" y="218" font-size="11.5" font-weight="400" text-anchor="middle" class="ink2">×2 · adversarial</text>
+<text x="40" y="250" font-size="11.5" font-weight="400" text-anchor="start" class="muted">c_info bus (link, auth, payment, settlement, return notices)  ·  c_dollar bus (FUND_CREDIT, FUND_DEBIT, FUND_REVERSE)  ·  env phase clock  ·  global Φ2 observer</text>
+<rect x="40" y="272" width="360" height="36" rx="18" class="bad-bg" stroke-width="1"/>
+<path d="M56 286 l8 8 M64 286 l-8 8" fill="none" class="s-bad" stroke-width="2" stroke-linecap="round"/>
+<text x="76" y="295" font-size="13" font-weight="700" text-anchor="start" class="bad">Φ1 violated</text>
+<text x="172" y="295" font-size="13" font-weight="600" text-anchor="start">A1 creditBLEED</text>
+<text x="60" y="328" font-size="12" font-weight="400" text-anchor="start" class="ink2">Continuous authorization</text>
+<rect x="420" y="272" width="360" height="36" rx="18" class="bad-bg" stroke-width="1"/>
+<path d="M436 286 l8 8 M444 286 l-8 8" fill="none" class="s-bad" stroke-width="2" stroke-linecap="round"/>
+<text x="456" y="295" font-size="13" font-weight="700" text-anchor="start" class="bad">Φ2 violated</text>
+<text x="552" y="295" font-size="13" font-weight="600" text-anchor="start">A2 creditMINT</text>
+<text x="440" y="328" font-size="12" font-weight="400" text-anchor="start" class="ink2">Zero-sum verification cycle</text>
+<rect x="800" y="272" width="360" height="36" rx="18" class="bad-bg" stroke-width="1"/>
+<path d="M816 286 l8 8 M824 286 l-8 8" fill="none" class="s-bad" stroke-width="2" stroke-linecap="round"/>
+<text x="836" y="295" font-size="13" font-weight="700" text-anchor="start" class="bad">Φ3 violated</text>
+<text x="932" y="295" font-size="13" font-weight="600" text-anchor="start">A3 creditRESET</text>
+<text x="820" y="328" font-size="12" font-weight="400" text-anchor="start" class="ink2">Settlement finality</text>
+</svg>

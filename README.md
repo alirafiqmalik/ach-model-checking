@@ -1,197 +1,191 @@
+# Credit Without Debit
 
-# ACH nuXmv model (paper artifact)
+Formal verification models and reproducible checks for ACH payment flows.
 
-Artifacts for the ACM CCS 2026 paper: "Credit Without Debit: Formal Verification of Banking Payment Systems" by Ali Hamza Malik and Muhammad Taqi Raza (University of Massachusetts Amherst).
+<p align="center">
+  <a href="https://zenodo.org/records/22701199"><img alt="Zenodo DOI 10.5281/zenodo.22701199" src="https://img.shields.io/badge/DOI-10.5281%2Fzenodo.22701199-1682D4?logo=zenodo&logoColor=white"></a>
+  <img alt="ACM CCS 2026" src="https://img.shields.io/badge/ACM%20CCS-2026-0969da">
+  <img alt="Model checker: nuXmv 2.1.0" src="https://img.shields.io/badge/model%20checker-nuXmv%202.1.0-8250df">
+  <img alt="Docker: linux/amd64" src="https://img.shields.io/badge/docker-linux%2Famd64-2496ED?logo=docker&logoColor=white">
+  <img alt="Properties: 40 checks" src="https://img.shields.io/badge/checks-3%20INVARSPEC%20%2B%2037%20EF-57606a">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-1a7f37"></a>
+</p>
 
-This project contains the NuSMV / nuXmv formal models for ACH payment flow along with the scripts for running and compiling the verification results. The results are compiled into a markdown file for easy review of results.
+The artifact connects the paper’s payment-system obligations to executable formal models.
 
-Our empirical evaluation uses real consumer bank accounts owned by members of the research team. Raw account screenshots and transaction logs cannot be shared publicly because they contain personally identifiable financial information. The paper provides the redacted screenshots documenting the user-visible state changes for each CWD instance (A1: creditBLEED Attack, A2: creditMINT Attack, and A3: creditRESET Attack).
+<p align="center">
+  <img src="docs/assets/hero.svg" alt="Credit Without Debit: ACH participants, message buses, and the three violated properties" width="100%">
+</p>
 
-## Requirements
+## What is this?
 
-- Docker, or macOS / Linux with `bash`, `make`, `python3`, and `diff`.
-- nuXmv binaries in `tools/`, included with the paper bundle:
-  - Linux (Docker or host): `tools/nuxmv-linux` (executable)
-  - macOS without Docker: `tools/nuxmv-mac` (executable)
+Artifact for the ACM CCS 2026 paper **Credit Without Debit: Formal Verification of Banking Payment Systems**, by Ali Hamza Malik and Muhammad Taqi Raza, University of Massachusetts Amherst. NuSMV/nuXmv models describe Automated Clearing House (ACH) payment flow; scripts merge, verify and summarize results in Markdown. Credit Without Debit (CWD) encompasses A1 creditBLEED (Φ1), A2 creditMINT (Φ2) and A3 creditRESET (Φ3).
 
-`docker build` fails if `tools/nuxmv-linux` is missing. Copy the binaries from the artifact bundle, then `chmod +x tools/nuxmv-linux` (and `nuxmv-mac` if you use the host binary).
+- **Maintained version:** this repository, <https://github.com/alirafiqmalik/ach-model-checking>
+- **Archived version:** Zenodo record [22701199](https://zenodo.org/records/22701199) (DOI [10.5281/zenodo.22701199](https://doi.org/10.5281/zenodo.22701199))
 
-## Run
+## At a glance
 
-From the repo root:
+| Item | Value |
+| --- | --- |
+| Model fragments | 8 |
+| Participants | 2 Originators, 2 Receivers, ODFI, ACH Operator, RDFI |
+| Checks | 40: 3 INVARSPEC + 37 EF |
+| Reference safety results | Φ1–Φ3 all violated |
+| Reference EF results | 29 true, 4 false, 4 bounded-inconclusive |
+
+The composition joins participant state machines through control and monetary channels.
+
+```mermaid
+flowchart TB
+    subgraph ADV_O["Adversarial Originators"]
+        direction LR
+        O0["orig_0<br/><i>originator(0, …)</i>"]
+        O1["orig_1<br/><i>originator(1, …)</i>"]
+    end
+    subgraph BANKS["Trusted, Nacha-compliant banks"]
+        direction LR
+        ODFI["odfi_i<br/><b>ODFI</b>"]
+        ACH["ach_i<br/><b>ACH Operator</b>"]
+        RDFI["rdfi_i<br/><b>RDFI</b>"]
+    end
+    subgraph ADV_R["Adversarial Receivers"]
+        direction LR
+        R0["recv_0<br/><i>receiver(0, …)</i>"]
+        R1["recv_1<br/><i>receiver(1, …)</i>"]
+    end
+
+    ADV_O -- "LINK_REQ · VERIFY_REQ<br/>PAYMENT_INIT · REVERSAL_NOTICE" --> ODFI
+    ODFI -- "LINK_ACK · VERIFY_ACK<br/>BATCH_ACK · RETURN_NOTICE" --> ADV_O
+    ODFI -- "BATCH_FORWARD" --> ACH
+    ACH -- "BATCH_ACK · RETURN_NOTICE" --> ODFI
+    ACH -- "SETTLEMENT_REQ" --> RDFI
+    RDFI -- "SETTLEMENT_ACK · RETURN_NOTICE<br/>REVERSAL_NOTICE" --> ACH
+    RDFI == "c_dollar: FUND_CREDIT · FUND_DEBIT · FUND_REVERSE" ==> ADV_R
+    ADV_O == "c_dollar: FUND_CREDIT (MICRO deposit)" ==> ADV_R
+    ADV_R -. "GRANT_AUTH · REVOKE_AUTH · VERIFY_ACK" .-> ADV_O
+
+    ENV(["env_i · Nacha phase clock<br/>window_count ≤ 3"])
+    G(["g · global_invariants<br/>Φ2 settlement counters"])
+    ENV -.-> BANKS
+    BANKS -.-> G
+
+    classDef adv fill:#ddf4ff,stroke:#0969da,color:#0a3069
+    classDef bank fill:#eaeef2,stroke:#57606a,color:#1f2328
+    classDef aux fill:#fbefff,stroke:#8250df,color:#3e1f79
+    class O0,O1,R0,R1 adv
+    class ODFI,ACH,RDFI bank
+    class ENV,G aux
+```
+<sub>Instances and parameters from <code>MODULE main</code> in <code>models/99_main.smv</code>; message routes from the <code>c_info_req_*</code> / <code>c_dollar_req_*</code> assignments in each participant module. All <code>c_info</code> traffic shares one single-slot bus; all money movement shares the <code>c_dollar</code> bus.</sub>
+
+The runner merges fragments, checks properties and compiles results.
+
+```mermaid
+flowchart LR
+    A["models/*.smv<br/>8 ordered fragments"] -- "tools/merge_smv.sh<br/>make merge check-merge" --> B["_main_model.smv"]
+    B -- "show_property" --> C{"index<br/>discovery"}
+    C -- "3 × INVARSPEC" --> D["Φ1, Φ3: IC3<br/>Φ2: incremental BMC, k = 60"]
+    C -- "37 × SPEC EF p" --> E["BMC of !(p)<br/>een-sorensson, k = 50"]
+    D --> F["spec-{0,1,2}-INV.log"]
+    E --> G["spec-{0..36}-CTL.log"]
+    F --> H["tools/nuxmv_model_stats.py"]
+    G --> H
+    H --> I[("model_stats.md")]
+    classDef io fill:#ddf4ff,stroke:#0969da,color:#0a3069
+    classDef run fill:#fbefff,stroke:#8250df,color:#3e1f79
+    class A,B,F,G,I io
+    class D,E,H run
+```
+
+## Quick start
+
+Run from the repository root with Docker, or use the bundled binary on Linux/macOS with Bash, make, Python 3 and diff:
 
 ```bash
 ./run_all_artifact.sh
-```
-
-Builds the image and merges the model. Checks run next; outputs go to `output/docker-run-<timestamp>/`.
-
-Without Docker (`tools/nuxmv-linux` on Linux, `tools/nuxmv-mac` on macOS):
-
-```bash
+# Native alternative:
 ./run_all_artifact.sh --no-docker
-```
-
-Outputs go to `output/local-run-<timestamp>/` unless you set a path:
-
-```bash
-ARTIFACT_DIR=./output/custom-run ./run_all_artifact.sh --no-docker
-```
-
-`make merge` writes `output/_main_model.smv`. Pipeline jobs write logs and `model_stats.md` into the same `output/` tree (one directory per run). The whole `output/` directory is gitignored.
-
-### Docker Desktop resources and Compose
-
-The reference host has 16 logical CPUs and 15 GiB of RAM. A complete run can take hours, depending on the model, hardware and concurrent jobs. In Docker Desktop, inspect **Settings → Resources → Advanced** and allocate enough CPUs and memory for the container limits below, leaving memory for the host. With the WSL 2 backend, configure the WSL VM allocation instead. See [Docker Desktop resource settings](https://docs.docker.com/desktop/settings-and-maintenance/settings/#resources).
-
-The optional Compose service defaults to 4 CPUs, an 8 GiB memory limit and 3 concurrent checker jobs. These are configurable starting values, not a measured minimum requirement. Reduce `JOBS` when memory is constrained; increasing the container limit cannot increase Docker Desktop's VM allocation.
-
-```bash
-ARTIFACT_CPUS=4 ARTIFACT_MEMORY=8g JOBS=3 docker compose config
+# Compose alternative:
 ARTIFACT_CPUS=4 ARTIFACT_MEMORY=8g JOBS=3 docker compose run --build --rm artifact
 ```
 
-Compose outputs default to `output/compose-run/`; set `ARTIFACT_DIR` to a fresh host directory for each retained run. `VERIFY_MODE`, `BMC_K`, `SKIP_INVAR`, `SKIP_CTL`, `PHI2_ENGINE` and `PHI2_BMC_K` are also forwarded. The existing `./run_all_artifact.sh` Docker command remains available; Compose resource limits apply when using Compose. See [Compose CPU and memory limits](https://docs.docker.com/reference/compose-file/services/).
+A complete run can take hours. See [pipeline setup, modes, resources and troubleshooting](docs/verification-pipeline.md).
 
-### Verification modes
+## Results summary
 
-Set `VERIFY_MODE` before the command:
+The nuXmv 2.1.0 reference run contains all 40 results. Bounded-inconclusive EF results do not establish unreachability.
 
-| Value        | What it does                                                                  |
-| ------------ | ----------------------------------------------------------------------------- |
-| `quick`      | Default. IC3 on Φ1/Φ3, incremental BMC on Φ2, then BMC on each `SPEC EF`. Writes the property sheet. |
-| `full`       | Runs `make verify` (verbose nuXmv on the merged model).                       |
-| `merge-only` | Merge only; skips nuXmv. Still writes `model_stats.md` where possible.        |
+<p align="center">
+  <img src="docs/assets/results-overview.svg" alt="Verdicts and wall times of all 40 property checks in the reference run" width="100%">
+</p>
 
-Example:
+| Property | Attack | Unified index | Engine | Result | Counterexample | Log |
+| --- | --- | --- | --- | --- | --- | --- |
+| Φ1 Continuous Authorization | A1 creditBLEED | 37 | IC3 | false | 10 states | [`spec-0-INV.log`](saved-reference-results/local-run-20261029-artifact-reviews/spec-0-INV.log) |
+| Φ2 Zero-Sum Invariant | A2 creditMINT | 38 | incremental BMC, k = 60 | false | 30 states | [`spec-1-INV.log`](saved-reference-results/local-run-20261029-artifact-reviews/spec-1-INV.log) |
+| Φ3 Settlement Finality | A3 creditRESET | 39 | IC3 | false | 9 states | [`spec-2-INV.log`](saved-reference-results/local-run-20261029-artifact-reviews/spec-2-INV.log) |
 
-```bash
-VERIFY_MODE=full ./run_all_artifact.sh --no-docker
+The Φ2 counterexample replays the creditMINT sequence: the micro-deposit credit settles and the account is linked, then the recovery debit is returned `R16`, which leaves one settled credit and no settled debit in the verification cycle. See the [step-by-step walkthrough](saved-reference-results/README.md#creditmint-witness) and the [property semantics](docs/properties.md).
+
+<p align="center">
+  <img src="docs/assets/phi2-creditmint-trace.svg" alt="Swimlane timeline of the 30-state Phi2 creditMINT counterexample" width="100%">
+</p>
+
+## Documentation
+
+| Document | Purpose |
+| --- | --- |
+| [Model architecture](models/README.md) | Participants, channels, assumptions and extensions |
+| [Verification pipeline](docs/verification-pipeline.md) | Commands, environment, outputs and troubleshooting |
+| [Properties](docs/properties.md) | Safety obligations, reachability and verdict semantics |
+| [Reference results](saved-reference-results/README.md) | Provenance, all 40 results and integrity checks |
+| [Tools](tools/README.md) | Utility interfaces and binary licensing |
+
+## Repository layout
+
+Source fragments, tools and retained results occupy separate repository directories.
+
+```text
+ach-model-checking/
+├── README.md                     ← you are here
+├── run_all_artifact.sh           # one-command pipeline: merge → nuXmv checks → stats
+├── Makefile                      # merge · check-merge · verify · smoke · test · clean
+├── Dockerfile                    # debian:bookworm-slim, linux/amd64, nuXmv + python3
+├── compose.yaml                  # resource-limited Compose service "artifact"
+├── docker/entrypoint.sh          # container entry → run_all_artifact.sh --inside-docker
+├── models/                       # the formal model, merged in filename order  → models/README.md
+│   ├── 00_types_channels.smv     #   c_info / c_dollar buses, env phase clock
+│   ├── 10_originator.smv         #   Originator FSM + transaction_slot
+│   ├── 20_odfi.smv               #   ODFI
+│   ├── 30_ach_operator.smv       #   ACH Operator
+│   ├── 40_rdfi.smv               #   RDFI
+│   ├── 50_receiver.smv           #   Receiver
+│   ├── 60_global_constraints.smv #   global observer for Φ2
+│   └── 99_main.smv               #   composition, Φ1–Φ3, 37 EF witnesses, JUSTICE
+├── tools/                        # merge, statistics, smoke test, nuXmv binaries  → tools/README.md
+├── tests/fixtures/minimal/       # two-fragment model used by `make test`
+├── docs/                         # layered documentation + figures (docs/assets/)
+└── saved-reference-results/      # complete reference run with logs and provenance → saved-reference-results/README.md
 ```
 
-The default quick run uses incremental BMC for the per-account verification-cycle Φ2 invariant:
+## Data and privacy
 
-```bash
-./run_all_artifact.sh --no-docker
+Our empirical evaluation uses real consumer bank accounts owned by members of the research team. Raw account screenshots and transaction logs cannot be shared publicly because they contain personally identifiable financial information. The paper provides the redacted screenshots documenting the user-visible state changes for each CWD instance (A1: creditBLEED Attack, A2: creditMINT Attack, and A3: creditRESET Attack).
+
+## Citation
+
+```bibtex
+@inproceedings{malik2026credit,
+  title = {Credit Without Debit: Formal Verification of Banking Payment Systems},
+  author = {Malik, Ali Hamza and Raza, Muhammad Taqi},
+  booktitle = {Proceedings of the ACM Conference on Computer and Communications Security},
+  year = {2026}
+}
 ```
 
-`PHI2_ENGINE` defaults to `bmc`, with `PHI2_BMC_K=60`. Set `PHI2_ENGINE=ic3` to use IC3 for Φ2 instead. The engine option changes only the checking algorithm. Both engines check the declared Φ2 property directly on the model, without an auxiliary query or search restrictions. A BMC counterexample conclusively refutes Φ2. No counterexample through `PHI2_BMC_K` is only bounded-inconclusive, not a safety proof. Φ1/Φ3 still use IC3, and all EF checks retain their existing method and `BMC_K` bound. The same options work with Docker and Compose.
+To cite the artifact itself, use the Zenodo record: <https://doi.org/10.5281/zenodo.22701199>.
 
-## Results
+## License
 
-The script prints the artifact directory when it finishes. In quick mode, `spec-1-INV.log` is written during the initial invariant stage, so the Φ2 trace can be inspected while the EF reachability checks continue.
-
-| File / folder           | Meaning                                                                                      |
-| ----------------------- | -------------------------------------------------------------------------------------------- |
-| `_main_model.smv`       | Single merged model (same as `output/_main_model.smv`).                                      |
-| `model_stats.md`        | Model size plus a table of every Invar and `EF` property when logs exist.                     |
-| `spec-*-INV.log`        | Quick-mode invariant logs (IC3 for Φ1/Φ3; incremental BMC for Φ2 by default).             |
-| `spec-*-CTL.log`        | BMC logs for each `EF p` (k-induction of `!(p)`).                                             |
-| `done.txt`              | Confirms the container or script finished.                                                   |
-| `verify-skipped.txt`    | Present only if `VERIFY_MODE=merge-only`.                                                    |
-| `nuxmv-verify-full.log` | Only for `VERIFY_MODE=full`: full console log from `make verify`.                            |
-
-Quick mode writes `spec-{0,1,2}-INV.log` and `spec-*-CTL.log`. The driver prints a terminal summary. In an INV log, search for invariant is true, is false, or a counterexample. For an IC3 invariant, true is a proof and false is a counterexample. A false verdict precedes its trace, so it need not be the final line. Progress messages alone are not a verdict.
-
-CTL logs decide `EF p` by BMC of `!(p)` (bound `BMC_K`, default 50). A counterexample is a witness, so `!(p)` false means the executability property is true. A proved true `!(p)` makes `EF p` false; no proof or counterexample through the bound is inconclusive, not evidence of unreachability.
-
-`timing.tsv` is one line per INV job (local index, unified index, seconds). `timing.ctl.tsv` is the same for EF jobs.
-
-To add EF logs to an existing INV run without repeating Φ1–Φ3:
-
-```bash
-SKIP_INVAR=1 ARTIFACT_DIR=./output/local-run-<timestamp> ./run_all_artifact.sh --no-docker
-```
-
-To rerun invariants while retaining completed EF logs for the **same merged model**:
-
-```bash
-SKIP_CTL=1 ARTIFACT_DIR=./output/local-run-<timestamp> ./run_all_artifact.sh --no-docker
-```
-
-Use either skip option only when the retained logs and `_main_model.smv` belong to the current model. Start a fresh artifact directory after changing the model. `SKIP_CTL=1` rejects a missing or mismatched saved model and missing CTL logs or timings. These options reuse existing results; they do not rerun skipped checks.
-
-## Expected results
-
-Reference results from nuXmv 2.1.0 are saved in [`local-run-20261029-artifact-reviews`](saved-reference-results/local-run-20261029-artifact-reviews/model_stats.md). The normal native command used the defaults `PHI2_ENGINE=bmc`, `PHI2_BMC_K=60`, `BMC_K=50` and `JOBS=9`: Φ1/Φ3 use IC3, Φ2 uses incremental BMC on the declared per-account verification-cycle invariant, and all 37 EF checks use the existing `een-sorensson` method. These engines and bounds match the current defaults.
-
-All 40 checks completed in one uninterrupted normal run; see [run configuration and audit](saved-reference-results/local-run-20261029-artifact-reviews/RUN.txt). Timings are individual job wall times under concurrent load. The four bounded-inconclusive EF results do not establish unreachability.
-
-| # | Kind | Formula | Result | Time (s) |
-| --- | --- | --- | --- | --- |
-| 0 | CTL | EF orig_0.fsm_state = linked_ok | true | 3 |
-| 1 | CTL | EF orig_0.fsm_state = link_failed | true | 122 |
-| 2 | CTL | EF orig_0.md_state = md_confirmed | true | 80 |
-| 3 | CTL | EF orig_0.md_state = md_failed | true | 6 |
-| 4 | CTL | EF orig_0.tx_0.payment_state = rejected | true | 15 |
-| 5 | CTL | EF orig_0.tx_0.payment_state = returned | true | 44 |
-| 6 | CTL | EF orig_0.tx_0.payment_state = reversed | false | 1 |
-| 7 | CTL | EF orig_0.fsm_state = reversing | true | 324 |
-| 8 | CTL | EF recv_0.fsm_state = auth_granted | true | 1 |
-| 9 | CTL | EF recv_0.fsm_state = auth_revoked_state | true | 1 |
-| 10 | CTL | EF recv_0.fsm_state = confirmed_md | inconclusive | 1349 |
-| 11 | CTL | EF recv_0.fsm_state = rejected_md | inconclusive | 1310 |
-| 12 | CTL | EF recv_0.fsm_state = notified_return | false | 1 |
-| 13 | CTL | EF recv_0.fsm_state = account_state_changed | true | 1 |
-| 14 | CTL | EF odfi_i.fsm_state = tps_verified | false | 1 |
-| 15 | CTL | EF odfi_i.fsm_state = tps_rejected | inconclusive | 2678 |
-| 16 | CTL | EF odfi_i.fsm_state = validation_rejected | true | 5 |
-| 17 | CTL | EF odfi_i.fsm_state = operator_acked | true | 16 |
-| 18 | CTL | EF odfi_i.fsm_state = link_acked | true | 1 |
-| 19 | CTL | EF odfi_i.u3_batch_reject | true | 6 |
-| 20 | CTL | EF odfi_i.u3_flag_entries | true | 6 |
-| 21 | CTL | EF ach_i.fsm_state = data_rejected_batch | true | 19 |
-| 22 | CTL | EF ach_i.fsm_state = data_rejected_entry | true | 20 |
-| 23 | CTL | EF ach_i.fsm_state = forwarded_ack | true | 8 |
-| 24 | CTL | EF rdfi_i.fsm_state = settled_state | true | 24 |
-| 25 | CTL | EF rdfi_i.fsm_state = returning | true | 24 |
-| 26 | CTL | EF rdfi_i.fsm_state = reversed_state | false | 1 |
-| 27 | CTL | EF rdfi_i.selected_return_code = R16 | true | 52 |
-| 28 | CTL | EF rdfi_i.selected_return_code = R29 | inconclusive | 559 |
-| 29 | CTL | EF env_i.window_count = 3 | true | 39 |
-| 30 | CTL | EF env_i.phase = ph_return_closed | true | 4 |
-| 31 | CTL | EF g.n_credits_micro > 0 | true | 58 |
-| 32 | CTL | EF g.n_credits_small > 0 | true | 71 |
-| 33 | CTL | EF g.n_credits_large > 0 | true | 72 |
-| 34 | CTL | EF g.n_debits_micro > 0 | true | 70 |
-| 35 | CTL | EF g.n_debits_small > 0 | true | 72 |
-| 36 | CTL | EF g.n_debits_large > 0 | true | 39 |
-| 37 | Invar | (((phi1_ok_tx0 & phi1_ok_tx1) & phi1_ok_tx2) & phi1_ok_tx3) | false | 13 |
-| 38 | Invar | (((orig_0.verification_cycle_complete -> orig_0.verification_credits = orig_0.verification_debits) & (orig_1.verification_cycle_complete -> orig_1.verification_credits = orig_1.verification_debits)) & (g.cycle_complete -> g.n_credits_regular = g.n_debits_regular)) | false | 33 |
-| 39 | Invar | ((((resource_released_tx0 -> env_i.return_window_expired) & (resource_released_tx1 -> env_i.return_window_expired)) & (resource_released_tx2 -> env_i.return_window_expired)) & (resource_released_tx3 -> env_i.return_window_expired)) | false | 9 |
-
-### Paper properties and attack witnesses
-
-The three `INVARSPEC`s are Φ1–Φ3. Their unified indices are 37–39 after the 37 CTL reachability properties. An unrestricted invariant counterexample need not contain every step of the corresponding paper attack.
-
-For micro-deposit linking, each Originator submits a MICRO credit and its recovery debit to the same freely selected `link_target_r`. The two local slots record membership in this verification cycle. Entry outcomes still follow the existing Operator and RDFI transitions: neither successful settlement nor a debit return is prescribed. After credit settlement, the provider links and keeps that verification account active until the pair is terminal.
-
-Φ2 checks settled-credit/debit equality separately for each provider's linked-account verification cycle, before the return window closes. A history latch records that this account was linked, so leaving the linking state cannot erase the obligation. This replaces the previous global MICRO aggregation, which could match a credit against an unrelated provider's or account's debit. Regular-class balance retains the existing global-cycle condition. This is a specification and verification-protocol correction, not just a change of search engine. It does not assert global MICRO balance for arbitrary manual/web-linked payments.
-
-The normal command checks this Φ2 directly and saves its counterexample as `spec-1-INV.log`. The saved trace has 30 states: Originator 1, Receiver 1, credit settlement at 21, confirmation at 22, linkage at 23, and debit return `R16` at 30. The other Originator submits nothing. No additional creditMINT query, fixed account selection, return-code constraint, private helper, or extra command is used. The source retains both Originators and both Receivers.
-
-This provider policy abstracts the Receiver confirmation exchange; the separate ODFI TPS handshake remains outside that abstraction. The model covers one verification pair per provider. Repeated-cycle amplification remains empirical.
-
-| Paper | Attack | Invar # | Log | Interpretation |
-| --- | --- | --- | --- | --- |
-| Φ1 | A1: creditBLEED | 37 | spec-0-INV.log | Authorization at submission and throughout the pipeline, plus the existing RDFI/return predicate. A full provisional-debit/R16 sequence requires a targeted witness. |
-| Φ2 | A2: creditMINT | 38 | spec-1-INV.log | Per-provider, per-account verification-cycle imbalance after linkage. The saved ordinary Φ2 trace shows the creditMINT sequence. |
-| Φ3 | A3: creditRESET | 39 | spec-2-INV.log | Issuer card posting makes resources available before the return window expires. |
-
-## Makefile
-
-| Target             | Action                                                    |
-| ------------------ | --------------------------------------------------------- |
-| `make merge`       | Build `output/_main_model.smv` from `models/*.smv`.       |
-| `make check-merge` | Ensures merge output matches joining the parts in order.  |
-| `make smoke`       | Loads merged model and flattens (fast sanity check).      |
-| `make test`        | Tiny merge + nuXmv batch (needs a `tools/` nuXmv binary). |
-| `make clean`       | Removes generated merge files (not the rest of `output/`). |
-
-## Layout
-
-- `models/`: SMV fragments (types, originator, ODFI, operator, RDFI, receiver, specs in `99_main.smv`).
-- `tools/`: `merge_smv.sh`, stats script, nuXmv binaries (from the artifact bundle).
-- `run_all_artifact.sh`: merge, checks, and stats (name matches the paper scripts).
-- `output/`: gitignored merge product and per-run logs/stats.
-- `saved-reference-results/`: completed reference run for the current model, with logs, timings, statistics and provenance.
+[MIT](LICENSE) covers model sources and scripts. Bundled nuXmv binaries are FBK’s and are shipped as provided under their own licensing terms.
